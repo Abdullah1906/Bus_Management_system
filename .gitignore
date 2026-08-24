@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 Bus Pos Solution/BPS.Application/DTOs/Places/Class1.cs
+Bus Pos Solution/BPS.API/appsettings.json
+
