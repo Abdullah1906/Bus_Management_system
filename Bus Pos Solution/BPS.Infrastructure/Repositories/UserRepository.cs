@@ -2,6 +2,7 @@
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
+using System.Data;
 namespace BPS.Infrastructure.Repositories
 {
     public class UserRepository : IUserRepository
@@ -14,34 +15,25 @@ namespace BPS.Infrastructure.Repositories
             _connectionFactory = connectionFactory;
         }
 
-        public async Task<User?> GetByUsernameAsync(
-            string username)
+        public async Task<User?> GetByUsernameAsync(string username)
         {
-            const string sql = """
-            SELECT
-                Id,
-                Username,
-                PasswordHash,
-                FullName,
-                Role,
-                IsActive,
-                CreatedAt,
-                UpdatedAt
-            FROM Users
-            WHERE Username = @Username
-            """;
-
             await using var connection =
                 _connectionFactory.CreateConnection();
 
-            await connection.OpenAsync();
-
             await using var command =
-                new SqlCommand(sql, connection);
+                new SqlCommand(
+                    "SP_User_GetByUsername",
+                    connection);
 
-            command.Parameters.AddWithValue(
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
                 "@Username",
-                username);
+                SqlDbType.NVarChar, 100)
+                .Value = username;
+
+            await connection.OpenAsync();
 
             await using var reader =
                 await command.ExecuteReaderAsync();
@@ -63,6 +55,9 @@ namespace BPS.Infrastructure.Repositories
                 FullName = reader.GetString(
                     reader.GetOrdinal("FullName")),
 
+                Email = reader["Email"]?.ToString() ?? "",
+                PhoneNumber = reader["PhoneNumber"]?.ToString() ?? "",
+
                 Role = reader.GetString(
                     reader.GetOrdinal("Role")),
 
@@ -78,6 +73,5 @@ namespace BPS.Infrastructure.Repositories
                     : reader.GetDateTime(
                         reader.GetOrdinal("UpdatedAt"))
             };
-        }
-    }
+    }   }
 }
