@@ -61,11 +61,13 @@ CREATE TABLE Places
     CreatedAt DATETIME2 NOT NULL
         CONSTRAINT DF_Places_CreatedAt DEFAULT GETUTCDATE(),
 
-    [CreatedBy] INT NULL,
+    CreatedBy NVARCHAR(100) NOT NULL
+        CONSTRAINT DF_Places_CreatedBy DEFAULT '',
 
     UpdatedAt DATETIME2 NULL,
 
-    [UpdatedBy] INT NULL,
+    UpdatedBy NVARCHAR(100) NOT NULL
+        CONSTRAINT DF_Places_UpdatedBy DEFAULT '',
 
 
     CONSTRAINT UQ_Places_PlaceName
@@ -91,10 +93,19 @@ CREATE TABLE TripRecords
 
     Price DECIMAL(18,2) NOT NULL,
 
-    Total AS (Price + TipAmount) PERSISTED,
+    Total AS (Price * TipAmount) PERSISTED,
 
     CreatedAt DATETIME2 NOT NULL
         CONSTRAINT DF_TripRecords_CreatedAt DEFAULT GETUTCDATE(),
+
+        
+    CreatedBy NVARCHAR(100) NOT NULL
+        CONSTRAINT DF_TripRecords_CreatedBy DEFAULT '',
+
+    UpdatedAt DATETIME2 NULL,
+
+    UpdatedBy NVARCHAR(100) NULL
+        CONSTRAINT DF_TripRecords_UpdatedBy DEFAULT '',
 
     -- Foreign Key
     CONSTRAINT FK_TripRecords_Places

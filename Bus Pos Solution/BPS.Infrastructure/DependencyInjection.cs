@@ -25,13 +25,13 @@ namespace BPS.Infrastructure
             // Repositories
             services.AddScoped<IPlaceRepository, PlaceRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<ITripRepository, TripRepository>();
 
             // Security
             services.AddScoped<IPasswordHasher, PasswordHasherService>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             // Services
             services.AddScoped<IUserSeeder, UserSeeder>();
-            services.AddScoped<IPlaceService, PlaceService>();
 
             return services;
         }

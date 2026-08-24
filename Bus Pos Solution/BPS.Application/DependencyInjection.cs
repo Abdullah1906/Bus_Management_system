@@ -10,7 +10,8 @@ namespace BPS.Application
             this IServiceCollection services)
         {
             services.AddScoped<IAuthService, AuthService>();
-
+            services.AddScoped<ITripService, TripService>();
+            services.AddScoped<IPlaceService, PlaceService>();
             return services;
         }
     }
