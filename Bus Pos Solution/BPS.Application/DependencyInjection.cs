@@ -12,6 +12,9 @@ namespace BPS.Application
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ITripService, TripService>();
             services.AddScoped<IPlaceService, PlaceService>();
+            services.AddScoped<IReportService, ReportService>();
+
+
             return services;
         }
     }

@@ -11,6 +11,7 @@ namespace BPS.Domain.Entities
         public long Id { get; set; }
 
         public int PlaceId { get; set; }
+        public string PlaceName { get; set; } = string.Empty;
 
         public DateTime TripDate { get; set; }
 

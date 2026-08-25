@@ -198,6 +198,7 @@ namespace BPS.Application.Services
                 Id = trip.Id,
 
                 PlaceId = trip.PlaceId,
+                PlaceName =trip.PlaceName,
 
                 TripDate = trip.TripDate,
 

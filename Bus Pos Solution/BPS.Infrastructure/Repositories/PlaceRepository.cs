@@ -49,25 +49,17 @@ public class PlaceRepository : IPlaceRepository
     // GET BY ID
     public async Task<Place?> GetByIdAsync(int id)
     {
-        await using var connection =
-            _connectionFactory.CreateConnection();
+        await using var connection = _connectionFactory.CreateConnection();
 
-        await using var command =
-            new SqlCommand(
-                "SP_Place_GetById",
-                connection);
+        await using var command = new SqlCommand("SP_Place_GetById", connection);
 
-        command.CommandType =
-            CommandType.StoredProcedure;
+        command.CommandType = CommandType.StoredProcedure;
 
-        command.Parameters.Add(
-            "@Id",
-            SqlDbType.Int).Value = id;
+        command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
 
         await connection.OpenAsync();
 
-        await using var reader =
-            await command.ExecuteReaderAsync();
+        await using var reader = await command.ExecuteReaderAsync();
 
         if (!await reader.ReadAsync())
             return null;
@@ -79,26 +71,15 @@ public class PlaceRepository : IPlaceRepository
     // CREATE
     public async Task<int> CreateAsync(Place place)
     {
-        await using var connection =
-            _connectionFactory.CreateConnection();
+        await using var connection = _connectionFactory.CreateConnection();
 
-        await using var command =
-            new SqlCommand(
-                "SP_Place_Create",
-                connection);
+        await using var command =new SqlCommand("SP_Place_Create", connection);
 
-        command.CommandType =
-            CommandType.StoredProcedure;
+        command.CommandType = CommandType.StoredProcedure;
 
-        command.Parameters.Add(
-            "@PlaceName",
-            SqlDbType.NVarChar,
-            150).Value = place.PlaceName;
+        command.Parameters.Add("@PlaceName",SqlDbType.NVarChar, 150).Value = place.PlaceName;
 
-        var priceParameter =
-            command.Parameters.Add(
-                "@PricePerTrip",
-                SqlDbType.Decimal);
+        var priceParameter = command.Parameters.Add( "@PricePerTrip", SqlDbType.Decimal);
 
         priceParameter.Precision = 18;
         priceParameter.Scale = 2;

@@ -238,6 +238,10 @@ namespace BPS.Infrastructure.Repositories
                 PlaceId = reader.GetInt32(
                     reader.GetOrdinal("PlaceId")),
 
+                PlaceName = reader.IsDBNull(reader.GetOrdinal("PlaceName"))
+                    ? string.Empty
+                    : reader.GetString(reader.GetOrdinal("PlaceName")),
+
                 TripDate = reader.GetDateTime(
                     reader.GetOrdinal("TripDate")),
 

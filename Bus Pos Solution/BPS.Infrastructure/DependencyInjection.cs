@@ -26,6 +26,7 @@ namespace BPS.Infrastructure
             services.AddScoped<IPlaceRepository, PlaceRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITripRepository, TripRepository>();
+            services.AddScoped<IReportRepository,ReportRepository>();
 
             // Security
             services.AddScoped<IPasswordHasher, PasswordHasherService>();
