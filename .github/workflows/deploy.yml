@@ -69,20 +69,7 @@ jobs:
     - name: List published files
       run: ls -la ./publish/
 
-    - name: Transfer files to EC2
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: ${{ secrets.EC2_PORT || 22 }}
-        source: "./publish/*"
-        target: "/var/www/buspos"
-        rm: true
-        strip_components: 1  # ✅ এইটা use করুন strip_prefix এর পরিবর্তে
-        debug: true
-
-    - name: Deploy and Restart Service
+    - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -90,6 +77,42 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
         script: |
+          # Backup current deployment
+          sudo rm -rf /var/www/buspos_backup
+          if [ -d "/var/www/buspos" ]; then
+            sudo cp -r /var/www/buspos /var/www/buspos_backup
+          fi
+          
+          # Create directory with proper permissions
+          sudo mkdir -p /var/www/buspos
           sudo chown -R $USER:$USER /var/www/buspos
           sudo chmod -R 755 /var/www/buspos
-          sudo systemctl restart buspos.service || sudo systemctl restart mydotnetapp.service
+          
+          # Remove old files
+          sudo rm -rf /var/www/buspos/*
+          
+          # Copy new files from GitHub workspace
+          sudo cp -r /github/workspace/publish/* /var/www/buspos/
+          
+          # Set proper permissions
+          sudo chown -R $USER:$USER /var/www/buspos
+          sudo chmod -R 755 /var/www/buspos
+          
+          # Restart service
+          sudo systemctl daemon-reload
+          sudo systemctl restart buspos.service || echo "Service not found, skipping restart"
+          
+          # Check service status
+          sudo systemctl status buspos.service --no-pager || echo "Service not configured yet"
+
+    # - name: Deploy and Restart Service
+    #   uses: appleboy/ssh-action@v1.0.3
+    #   with:
+    #     host: ${{ secrets.EC2_HOST }}
+    #     username: ${{ secrets.EC2_USERNAME }}
+    #     key: ${{ secrets.EC2_SSH_KEY }}
+    #     port: ${{ secrets.EC2_PORT || 22 }}
+    #     script: |
+    #       sudo chown -R $USER:$USER /var/www/buspos
+    #       sudo chmod -R 755 /var/www/buspos
+    #       sudo systemctl restart buspos.service || sudo systemctl restart mydotnetapp.service
