@@ -83,10 +83,23 @@ jobs:
         ls -la ./publish/ || echo "Publish folder not found!"
         echo "Total files: $(find ./publish -type f | wc -l)"
 
-    - name: List published files
-      run: ls -la ./publish/
+    # ✅ ফাইলগুলো EC2-তে পাঠান
+    - name: Deploy to EC2 using SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
+        source: "publish/*"
+        target: "/var/www/buspos"
+        strip_components: 1
+        rm: true
+        overwrite: true
+        debug: true
 
-    - name: Deploy to EC2 via SSH
+    # ✅ Service restart করুন
+    - name: Restart Service on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -94,69 +107,15 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
         script: |
-          set -e
-          
-          echo "🚀 Starting deployment to EC2..."
-          echo "==================================="
-          
-          # Check if publish folder exists in GitHub workspace
-          echo "🔍 Checking publish folder in GitHub workspace..."
-          if [ -d "/github/workspace/publish" ]; then
-            echo "✅ Publish folder found"
-            echo "📂 Files to deploy:"
-            ls -la /github/workspace/publish/ | head -20
-          else
-            echo "❌ Publish folder not found at /github/workspace/publish/"
-            echo "📂 Available folders:"
-            ls -la /github/workspace/
-            exit 1
-          fi
-          
-          # Backup current deployment
-          echo "📦 Creating backup..."
-          sudo rm -rf /var/www/buspos_backup
-          if [ -d "/var/www/buspos" ]; then
-            sudo cp -r /var/www/buspos /var/www/buspos_backup
-            echo "✅ Backup created at /var/www/buspos_backup"
-          else
-            echo "ℹ️ No existing deployment found, skipping backup"
-          fi
-          
-          # Create directory with proper permissions
-          echo "📁 Creating deployment directory..."
-          sudo mkdir -p /var/www/buspos
-          sudo chown -R $USER:$USER /var/www/buspos
-          sudo chmod -R 755 /var/www/buspos
-          echo "✅ Directory created"
-          
-          # Remove old files
-          echo "🗑️ Removing old files..."
-          sudo rm -rf /var/www/buspos/*
-          
-          # Copy new files from GitHub workspace
-          echo "📂 Copying new files..."
-          sudo cp -r /github/workspace/publish/* /var/www/buspos/
-          echo "✅ Files copied successfully"
-          
-          # Set proper permissions
           echo "🔧 Setting permissions..."
-          sudo chown -R $USER:$USER /var/www/buspos
+          sudo chown -R ubuntu:ubuntu /var/www/buspos
           sudo chmod -R 755 /var/www/buspos
-          echo "✅ Permissions set"
           
-          # Verify deployed files
-          echo "📋 Deployed files (first 20):"
+          echo "📂 Checking deployed files..."
           ls -la /var/www/buspos/ | head -20
-          echo "📊 Total deployed files: $(find /var/www/buspos -type f | wc -l)"
           
-          # Check if service exists, if not create it
-          echo "🔄 Checking service status..."
-          if systemctl list-units --full -all | grep -q "buspos.service"; then
-            echo "✅ buspos.service already exists"
-          else
-            echo "⚠️ buspos.service not found. Creating service..."
-            
-            # Create service file
+          echo "🔄 Creating service if not exists..."
+          if ! systemctl list-units --full -all | grep -q "buspos.service"; then
             sudo tee /etc/systemd/system/buspos.service > /dev/null <<'EOF'
           [Unit]
           Description=Bus POS Application
@@ -173,80 +132,15 @@ jobs:
           [Install]
           WantedBy=multi-user.target
           EOF
-            
-            echo "✅ Service file created at /etc/systemd/system/buspos.service"
-            
-            # Reload systemd
             sudo systemctl daemon-reload
-            echo "✅ Systemd reloaded"
-            
-            # Enable service
             sudo systemctl enable buspos.service
-            echo "✅ Service enabled"
+            echo "✅ Service created"
           fi
           
-          # Restart service
           echo "🔄 Restarting service..."
-          sudo systemctl daemon-reload
           sudo systemctl restart buspos.service
-          echo "✅ Service restarted"
           
-          # Check service status
           echo "📊 Service status:"
-          sudo systemctl status buspos.service --no-pager || echo "⚠️ Service status check failed"
+          sudo systemctl status buspos.service --no-pager
           
-          # Check if application is running
-          echo "🔍 Checking if application is running..."
-          sleep 5
-          if pgrep -f "dotnet.*BPS.API.dll" > /dev/null; then
-            echo "✅ Application is running"
-            ps aux | grep "dotnet.*BPS.API.dll" | grep -v grep
-          else
-            echo "⚠️ Application not running. Checking logs..."
-            sudo journalctl -u buspos.service -n 20 --no-pager
-          fi
-          
-          echo "==================================="
-          echo "🎉 Deployment completed successfully!"
-          
-          echo ""
-          echo "📌 Application Information:"
-          echo "   - Location: /var/www/buspos"
-          echo "   - Service: buspos.service"
-          echo "   - Port: 5000"
-          echo "   - URL: http://${{ secrets.EC2_HOST }}:5000"
-
-    - name: Health Check
-      run: |
-        echo "⏳ Waiting for application to start..."
-        sleep 10
-        
-        echo "🔍 Performing health check..."
-        echo "🌐 URL: http://${{ secrets.EC2_HOST }}:5000"
-        
-        if curl -f -s -o /dev/null http://${{ secrets.EC2_HOST }}:5000/health; then
-          echo "✅ Health check passed!"
-          echo "✅ Application is running at: http://${{ secrets.EC2_HOST }}:5000"
-        else
-          echo "⚠️ Health check endpoint not responding"
-          echo "ℹ️ Trying to access root endpoint..."
-          if curl -f -s -o /dev/null http://${{ secrets.EC2_HOST }}:5000; then
-            echo "✅ Application is running (root endpoint)"
-          else
-            echo "❌ Application not responding."
-            echo "🔍 Please check EC2 logs:"
-            echo "   sudo journalctl -u buspos.service -f"
-          fi
-        fi
-
-    - name: Deployment Summary
-      run: |
-        echo "==================================="
-        echo "✅ DEPLOYMENT SUMMARY"
-        echo "==================================="
-        echo "🌐 Application URL: http://${{ secrets.EC2_HOST }}:5000"
-        echo "📁 Deployment Path: /var/www/buspos"
-        echo "🔄 Service Name: buspos.service"
-        echo "📊 Check Status: sudo systemctl status buspos.service"
-        echo "📋 View Logs: sudo journalctl -u buspos.service -f"
-        echo "==================================="
+          echo "✅ Deployment complete!"
