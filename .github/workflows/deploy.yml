@@ -73,7 +73,7 @@ jobs:
         echo "Publishing: $API_PROJECT"
         dotnet publish "$API_PROJECT" -c Release -o ./publish --no-build
         
-        echo "Publish completed.
+        echo "Publish completed."
 
     - name: List published files (Debug)
       run: |
