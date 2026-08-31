@@ -10,32 +10,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # ১. GitHub থেকে কোড চেকআউট করা
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # ২. .NET SDK সেটআপ করা
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
-    # ৩. Restore & Build
+    # ✅ ডিরেক্টরি structure দেখুন
+    - name: Debug Directory Structure
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files in root:"
+        ls -la
+        echo "Searching for .sln files:"
+        find . -name "*.sln"
+        echo "Searching for .csproj files:"
+        find . -name "*.csproj"
+
+    # ✅ সঠিক path এ restore করুন
     - name: Restore dependencies
-      run: dotnet restore "Bus Pos Solution.sln"
+      run: |
+        if [ -f "Bus Pos Solution.sln" ]; then
+          dotnet restore "Bus Pos Solution.sln"
+        elif [ -f "Bus_Pos_Solution.sln" ]; then
+          dotnet restore "Bus_Pos_Solution.sln"
+        elif [ -f "BusPosSolution.sln" ]; then
+          dotnet restore "BusPosSolution.sln"
+        else
+          echo "Searching for sln file..."
+          SLN_FILE=$(find . -name "*.sln" | head -1)
+          if [ -n "$SLN_FILE" ]; then
+            echo "Found: $SLN_FILE"
+            dotnet restore "$SLN_FILE"
+          else
+            echo "No sln file found!"
+            exit 1
+          fi
+        fi
 
     - name: Build Project
-      run: dotnet build "Bus Pos Solution.sln" --configuration Release --no-restore
+      run: |
+        SLN_FILE=$(find . -name "*.sln" | head -1)
+        dotnet build "$SLN_FILE" --configuration Release --no-restore
 
-    # ৪. Publish API Project (শুধু API project publish করুন)
     - name: Publish API
-      run: dotnet publish bps.api/bps.api.csproj -c Release -o ./publish --no-build
+      run: |
+        # API project খুঁজে বের করুন
+        API_PROJECT=$(find . -path "*/bps.api/*.csproj" | head -1)
+        if [ -z "$API_PROJECT" ]; then
+          echo "API project not found! Searching for any csproj..."
+          API_PROJECT=$(find . -name "*.csproj" | grep -i "api" | head -1)
+        fi
+        echo "Publishing: $API_PROJECT"
+        dotnet publish "$API_PROJECT" -c Release -o ./publish --no-build
 
-    # ৫. পাবলিশ করা ফাইল লিস্ট চেক করুন (Debugging)
     - name: List published files
       run: ls -la ./publish/
 
-    # ৬. EC2 সার্ভারে ফাইল পাঠানো
     - name: Transfer files to EC2
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -46,9 +79,8 @@ jobs:
         source: "./publish/*"
         target: "/var/www/buspos"
         strip_prefix: "publish"
-        rm: true  # পুরনো ফাইল ডিলিট করে নতুন কপি করবে
+        rm: true
 
-    # ৭. EC2-তে Permission ও Service Restart
     - name: Deploy and Restart Service
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -57,23 +89,6 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
         script: |
-          # ফোল্ডারের permission ঠিক করা
           sudo chown -R $USER:$USER /var/www/buspos
           sudo chmod -R 755 /var/www/buspos
-          
-          # .NET service restart (যদি systemd service থাকে)
-          sudo systemctl restart buspos.service
-          
-          # অথবা যদি Kestrel-run করেন
-          # sudo pkill -f "dotnet.*bps.api.dll" || true
-          # cd /var/www/buspos
-          # nohup dotnet bps.api.dll --urls="http://0.0.0.0:5000" &
-          
-          # Service status check
-          sudo systemctl status buspos.service --no-pager || true
-
-    # ৮. (Optional) Health Check
-    - name: Health Check
-      run: |
-        sleep 10
-        curl -f http://${{ secrets.EC2_HOST }}:5000/health || echo "Health check failed"
+          sudo systemctl restart buspos.service || sudo systemctl restart mydotnetapp.service
