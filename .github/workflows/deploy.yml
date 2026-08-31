@@ -1,0 +1,53 @@
+name: Deploy .NET App to AWS EC2
+
+on:
+  push:
+    branches:
+      - main  # main ব্রাঞ্চে push হলে pipeline চলবে
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # ১. GitHub থেকে কোড চেকআউট করা
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # ২. .NET SDK সেটআপ করা
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # আপনার .NET ভার্সন দিন (যেমন 6.0, 7.0, 8.0)
+
+    # ৩. Restore & Build
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build Project
+      run: dotnet build --configuration Release --no-restore
+
+    # ৪. Publish করা
+    - name: Publish App
+      run: dotnet publish -c Release -o ./publish --no-build
+
+    # ৫. EC2 সার্ভারে ফাইল পাঠানো (Deploying via SCP)
+    - name: Transfer files to EC2
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "./publish/*"
+        target: "/var/www/mydotnetapp" # EC2-এর যে ফোল্ডারে ফাইল রাখতে চান
+        strip_prefix: "publish"
+
+    # ৬. EC2-তে Application Restart করা
+    - name: Restart Service on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          sudo systemctl restart mydotnetapp.service
