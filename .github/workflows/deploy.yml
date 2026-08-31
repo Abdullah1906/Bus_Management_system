@@ -101,6 +101,48 @@ jobs:
         target: "/home/${{ secrets.EC2_USERNAME }}/"
         debug: true
 
+    # ✅ EC2-তে .NET Runtime Install করুন
+    - name: Install .NET Runtime on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
+        script: |
+          echo "🔍 Checking .NET Runtime..."
+          
+          # Check if dotnet is already installed
+          if command -v dotnet &> /dev/null; then
+            echo "✅ .NET Runtime already installed: $(dotnet --version)"
+          else
+            echo "📥 Installing .NET 8.0 Runtime..."
+            
+            # Detect Ubuntu version
+            UBUNTU_VERSION=$(lsb_release -rs | cut -d. -f1)
+            echo "Ubuntu version: $UBUNTU_VERSION"
+            
+            # Install based on version
+            if [ "$UBUNTU_VERSION" == "24" ]; then
+              wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            elif [ "$UBUNTU_VERSION" == "22" ]; then
+              wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            elif [ "$UBUNTU_VERSION" == "20" ]; then
+              wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            else
+              echo "❌ Unsupported Ubuntu version: $UBUNTU_VERSION"
+              exit 1
+            fi
+            
+            sudo dpkg -i packages-microsoft-prod.deb
+            rm packages-microsoft-prod.deb
+            sudo apt-get update
+            sudo apt-get install -y dotnet-runtime-8.0
+            
+            echo "✅ .NET Runtime installed successfully!"
+            dotnet --version
+          fi
+
     # ✅ SSH দিয়ে Extract করুন
     - name: Extract and setup on EC2
       uses: appleboy/ssh-action@v1.0.3
