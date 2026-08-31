@@ -180,7 +180,7 @@ jobs:
           
           [Service]
           WorkingDirectory=/var/www/buspos
-          ExecStart=/usr/bin/dotnet /var/www/buspos/BPS.API.dll --urls="http://0.0.0.0:5000"
+          ExecStart=/usr/share/dotnet/dotnet /var/www/buspos/BPS.API.dll --urls="http://0.0.0.0:5000"
           Restart=always
           RestartSec=10
           User=ubuntu
