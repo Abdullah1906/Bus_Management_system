@@ -16,7 +16,7 @@ namespace BPS.Application
             services.AddScoped<ITripScheduleService,TripScheduleService>();
             services.AddScoped<IBookingService,BookingService>();
             services.AddScoped<IBusService,BusService>();
-
+            services.AddScoped<BusSeatService>();
 
             return services;
         }

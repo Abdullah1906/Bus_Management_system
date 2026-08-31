@@ -1734,6 +1734,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+
 CREATE OR ALTER PROCEDURE SP_Bus_ChangeStatus
     @Id INT,
     @IsActive BIT,
@@ -1772,6 +1773,306 @@ BEGIN
         UpdatedAt,
         UpdatedBy
     FROM Buses
+    WHERE Id = @Id;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_Create
+    @BusId INT,
+    @SeatNumber NVARCHAR(20),
+    @RowNumber INT,
+    @ColumnNumber INT,
+    @IsWindow BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM Buses
+        WHERE Id = @BusId
+          AND IsActive = 1
+    )
+    BEGIN
+        THROW 50100,
+            'Bus not found or inactive.',
+            1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM BusSeats
+        WHERE BusId = @BusId
+          AND SeatNumber = @SeatNumber
+    )
+    BEGIN
+        THROW 50101,
+            'Seat number already exists for this bus.',
+            1;
+    END;
+
+    IF @RowNumber <= 0
+    BEGIN
+        THROW 50102,
+            'Row number must be greater than zero.',
+            1;
+    END;
+
+    IF @ColumnNumber <= 0
+    BEGIN
+        THROW 50103,
+            'Column number must be greater than zero.',
+            1;
+    END;
+
+    INSERT INTO BusSeats
+    (
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    )
+    VALUES
+    (
+        @BusId,
+        @SeatNumber,
+        @RowNumber,
+        @ColumnNumber,
+        @IsWindow,
+        1,
+        GETUTCDATE()
+    );
+
+    DECLARE @Id BIGINT =
+        SCOPE_IDENTITY();
+
+    SELECT
+        Id,
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    FROM BusSeats
+    WHERE Id = @Id;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_GetByBusId
+    @BusId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    FROM BusSeats
+    WHERE BusId = @BusId
+    ORDER BY
+        RowNumber,
+        ColumnNumber;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_GetById
+    @Id BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    FROM BusSeats
+    WHERE Id = @Id;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_Update
+    @Id BIGINT,
+    @SeatNumber NVARCHAR(20),
+    @RowNumber INT,
+    @ColumnNumber INT,
+    @IsWindow BIT,
+    @IsActive BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @BusId INT;
+
+    SELECT
+        @BusId = BusId
+    FROM BusSeats
+    WHERE Id = @Id;
+
+    IF @BusId IS NULL
+    BEGIN
+        THROW 50104,
+            'Seat not found.',
+            1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM BusSeats
+        WHERE BusId = @BusId
+          AND SeatNumber = @SeatNumber
+          AND Id <> @Id
+    )
+    BEGIN
+        THROW 50105,
+            'Seat number already exists for this bus.',
+            1;
+    END;
+
+    UPDATE BusSeats
+    SET
+        SeatNumber = @SeatNumber,
+        RowNumber = @RowNumber,
+        ColumnNumber = @ColumnNumber,
+        IsWindow = @IsWindow,
+        IsActive = @IsActive
+    WHERE Id = @Id;
+
+    SELECT
+        Id,
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    FROM BusSeats
+    WHERE Id = @Id;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_Delete
+    @Id BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM BusSeats
+        WHERE Id = @Id
+    )
+    BEGIN
+        THROW 50106,
+            'Seat not found.',
+            1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM TripSeats
+        WHERE BusSeatId = @Id
+    )
+    BEGIN
+        THROW 50107,
+            'Cannot delete seat because it is already used by a trip.',
+            1;
+    END;
+
+    DELETE FROM BusSeats
+    WHERE Id = @Id;
+
+    SELECT 1 AS Result;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_BusSeat_ChangeStatus
+    @Id BIGINT,
+    @IsActive BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM BusSeats
+        WHERE Id = @Id
+    )
+    BEGIN
+        THROW 50108,
+            'Seat not found.',
+            1;
+    END;
+
+    UPDATE BusSeats
+    SET
+        IsActive = @IsActive
+    WHERE Id = @Id;
+
+    SELECT
+        Id,
+        BusId,
+        SeatNumber,
+        RowNumber,
+        ColumnNumber,
+        IsWindow,
+        IsActive,
+        CreatedAt
+    FROM BusSeats
     WHERE Id = @Id;
 END;
 GO
