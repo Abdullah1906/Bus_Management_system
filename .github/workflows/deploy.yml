@@ -18,15 +18,69 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Build and Publish
+    # ✅ ডিরেক্টরি structure দেখুন
+    - name: Debug Directory Structure
       run: |
-        cd "Bus Pos Solution"
-        dotnet restore
-        dotnet build --configuration Release --no-restore
-        cd bps.api
-        dotnet publish -c Release -o ../../publish --no-build
-        cd ../..
-        echo "✅ Build complete"
+        echo "Current directory: $(pwd)"
+        echo "Files in root:"
+        ls -la
+        echo "Searching for .sln files:"
+        find . -name "*.sln"
+        echo "Searching for .csproj files:"
+        find . -name "*.csproj"
+
+    # ✅ সঠিক path এ restore করুন
+    - name: Restore dependencies
+      run: |
+        if [ -f "Bus Pos Solution.sln" ]; then
+          dotnet restore "Bus Pos Solution.sln"
+        elif [ -f "Bus_Pos_Solution.sln" ]; then
+          dotnet restore "Bus_Pos_Solution.sln"
+        elif [ -f "BusPosSolution.sln" ]; then
+          dotnet restore "BusPosSolution.sln"
+        else
+          echo "Searching for sln file..."
+          SLN_FILE=$(find . -name "*.sln" | head -1)
+          if [ -n "$SLN_FILE" ]; then
+            echo "Found: $SLN_FILE"
+            dotnet restore "$SLN_FILE"
+          else
+            echo "No sln file found!"
+            exit 1
+          fi
+        fi
+
+    - name: Build Project
+      run: |
+        SLN_FILE=$(find . -name "*.sln" | head -1)
+        dotnet build "$SLN_FILE" --configuration Release --no-restore
+
+    - name: Publish API
+      run: |
+        # API project খুঁজে বের করুন
+        API_PROJECT=$(find . -path "*/bps.api/*.csproj" | head -1)
+        if [ -z "$API_PROJECT" ]; then
+          echo "API project not found! Searching for any csproj..."
+          API_PROJECT=$(find . -name "*.csproj" | grep -i "api" | head -1)
+        fi
+        if [ -z "$API_PROJECT" ]; then
+          echo "No API project found!"
+          echo "Available csproj files:"
+          find . -name "*.csproj"
+          exit 1
+        fi
+        
+        echo "Publishing: $API_PROJECT"
+        dotnet publish "$API_PROJECT" -c Release -o ./publish --no-build
+        
+        echo "Publish completed."
+
+    - name: List published files (Debug)
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files in publish folder:"
+        ls -la ./publish/ || echo "Publish folder not found!"
+        echo "Total files: $(find ./publish -type f | wc -l)"
 
     - name: Create deployment package
       run: |
