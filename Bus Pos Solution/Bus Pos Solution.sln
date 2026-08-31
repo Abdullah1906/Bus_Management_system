@@ -23,6 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BPS.API", "BPS.API\BPS.API.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{804FA29D-DAD4-43A0-AE64-794266C2109A}"
 	ProjectSection(SolutionItems) = preProject
+		index.sql = index.sql
 		StoreProcedures.sql = StoreProcedures.sql
 		Tables.sql = Tables.sql
 	EndProjectSection

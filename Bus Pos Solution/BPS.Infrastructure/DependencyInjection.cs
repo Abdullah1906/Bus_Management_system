@@ -5,6 +5,7 @@ using BPS.Infrastructure.Repositories;
 using BPS.Infrastructure.Security;
 using BPS.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
+using BPS.Infrastructure.BackgroundServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,12 +28,16 @@ namespace BPS.Infrastructure
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITripRepository, TripRepository>();
             services.AddScoped<IReportRepository,ReportRepository>();
+            services.AddScoped<ITripScheduleRepository,TripScheduleRepository>();
+            services.AddScoped<IBookingRepository,BookingRepository>();
+            services.AddScoped<IBusRepository,BusRepository>();
 
             // Security
             services.AddScoped<IPasswordHasher, PasswordHasherService>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             // Services
             services.AddScoped<IUserSeeder, UserSeeder>();
+            services.AddHostedService<SeatLockCleanupWorker>();
 
             return services;
         }

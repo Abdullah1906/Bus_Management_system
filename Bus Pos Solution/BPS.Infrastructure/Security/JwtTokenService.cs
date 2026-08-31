@@ -41,6 +41,8 @@ namespace BPS.Infrastructure.Security
 
             var claims = new List<Claim>
             {
+                   new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
+
                 new(JwtRegisteredClaimNames.Sub,
                     user.Id.ToString()),
 
