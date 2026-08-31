@@ -143,7 +143,7 @@ jobs:
             
           fi
 
-    # ✅ SSH দিয়ে Extract করুন
+    # ✅ SSH দিয়ে Extract এবং Service ফোর্সড আপডেট
     - name: Extract and setup on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -171,9 +171,15 @@ jobs:
           echo "📂 Deployed files:"
           ls -la /var/www/buspos/ | head -20
           
+          # ✅ Service ফাইল ফোর্সড আপডেট (if বাদ দিন)
           echo "🔄 Setting up service..."
-          if ! systemctl list-units --full -all | grep -q "buspos.service"; then
-            sudo tee /etc/systemd/system/buspos.service > /dev/null <<'EOF'
+          
+          # পুরনো service stop করুন
+          sudo systemctl stop buspos.service 2>/dev/null || true
+          sudo systemctl disable buspos.service 2>/dev/null || true
+          
+          # Service ফাইল ওভাররাইট করুন
+          sudo tee /etc/systemd/system/buspos.service > /dev/null <<'EOF'
           [Unit]
           Description=Bus POS Application
           After=network.target
@@ -185,18 +191,24 @@ jobs:
           RestartSec=10
           User=ubuntu
           Environment=ASPNETCORE_ENVIRONMENT=Production
+          Environment=DOTNET_ROOT=/usr/share/dotnet
           
           [Install]
           WantedBy=multi-user.target
           EOF
-            sudo systemctl daemon-reload
-            sudo systemctl enable buspos.service
-          fi
+          
+          sudo systemctl daemon-reload
+          sudo systemctl enable buspos.service
           
           echo "🔄 Restarting service..."
           sudo systemctl restart buspos.service
           
+          sleep 3
+          
           echo "📊 Service status:"
           sudo systemctl status buspos.service --no-pager
+          
+          echo "📋 Checking logs:"
+          sudo journalctl -u buspos.service -n 20 --no-pager
           
           echo "✅ Deployment complete!"
