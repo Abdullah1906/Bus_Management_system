@@ -18,111 +18,37 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    # ✅ ডিরেক্টরি structure দেখুন
-    - name: Debug Directory Structure
+    - name: Build and Publish
       run: |
-        echo "Current directory: $(pwd)"
-        echo "Files in root:"
-        ls -la
-        echo "Searching for .sln files:"
-        find . -name "*.sln"
-        echo "Searching for .csproj files:"
-        find . -name "*.csproj"
+        cd "Bus Pos Solution"
+        dotnet restore
+        dotnet build --configuration Release --no-restore
+        cd bps.api
+        dotnet publish -c Release -o ../../publish --no-build
+        cd ../..
+        echo "✅ Build complete"
 
-    # ✅ সঠিক path এ restore করুন
-    - name: Restore dependencies
+    - name: Create deployment package
       run: |
-        if [ -f "Bus Pos Solution.sln" ]; then
-          dotnet restore "Bus Pos Solution.sln"
-        elif [ -f "Bus_Pos_Solution.sln" ]; then
-          dotnet restore "Bus_Pos_Solution.sln"
-        elif [ -f "BusPosSolution.sln" ]; then
-          dotnet restore "BusPosSolution.sln"
-        else
-          echo "Searching for sln file..."
-          SLN_FILE=$(find . -name "*.sln" | head -1)
-          if [ -n "$SLN_FILE" ]; then
-            echo "Found: $SLN_FILE"
-            dotnet restore "$SLN_FILE"
-          else
-            echo "No sln file found!"
-            exit 1
-          fi
-        fi
+        cd publish
+        tar -czf ../deploy.tar.gz .
+        cd ..
+        echo "✅ Package created: deploy.tar.gz"
 
-    - name: Build Project
-      run: |
-        SLN_FILE=$(find . -name "*.sln" | head -1)
-        dotnet build "$SLN_FILE" --configuration Release --no-restore
-
-    - name: Publish API
-      run: |
-        # API project খুঁজে বের করুন
-        API_PROJECT=$(find . -path "*/bps.api/*.csproj" | head -1)
-        if [ -z "$API_PROJECT" ]; then
-          echo "API project not found! Searching for any csproj..."
-          API_PROJECT=$(find . -name "*.csproj" | grep -i "api" | head -1)
-        fi
-        if [ -z "$API_PROJECT" ]; then
-          echo "No API project found!"
-          echo "Available csproj files:"
-          find . -name "*.csproj"
-          exit 1
-        fi
-        
-        echo "Publishing: $API_PROJECT"
-        dotnet publish "$API_PROJECT" -c Release -o ./publish --no-build
-        
-        echo "Publish completed."
-
-    - name: List published files (Debug)
-      run: |
-        echo "Current directory: $(pwd)"
-        echo "Files in publish folder:"
-        ls -la ./publish/ || echo "Publish folder not found!"
-        echo "Total files: $(find ./publish -type f | wc -l)"
-
-    # ✅ প্রথমে SSH দিয়ে Permission setup করুন
-    - name: Setup EC2 Directory Permissions
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: ${{ secrets.EC2_PORT || 22 }}
-        script: |
-          echo "🔧 Setting up directory permissions..."
-          
-          # Create directory with sudo
-          sudo mkdir -p /var/www/buspos
-          
-          # Change ownership to current user
-          sudo chown -R $USER:$USER /var/www/buspos
-          
-          # Set permissions
-          sudo chmod -R 755 /var/www/buspos
-          
-          # Verify
-          ls -la /var/www/
-          echo "✅ Directory setup complete"
-
-    # ✅ ফাইলগুলো EC2-তে পাঠান
-    - name: Deploy to EC2 using SCP
+    # ✅ Tar file home তে পাঠান
+    - name: Upload package to EC2
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
-        source: "publish/*"
-        target: "/var/www/buspos"
-        strip_components: 1
-        rm: true
-        overwrite: true
+        source: "deploy.tar.gz"
+        target: "/home/${{ secrets.EC2_USERNAME }}/"
         debug: true
 
-    # ✅ Service restart করুন
-    - name: Restart Service on EC2
+    # ✅ SSH দিয়ে Extract করুন
+    - name: Extract and setup on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -130,14 +56,26 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
         script: |
-          echo "🔧 Setting permissions..."
-          sudo chown -R ubuntu:ubuntu /var/www/buspos
+          echo "📦 Extracting deployment package..."
+          
+          # Create directory
+          sudo mkdir -p /var/www/buspos
+          sudo chown -R $USER:$USER /var/www/buspos
+          
+          # Extract files
+          sudo tar -xzf /home/$USER/deploy.tar.gz -C /var/www/buspos/
+          
+          # Remove tar file
+          rm -f /home/$USER/deploy.tar.gz
+          
+          # Set permissions
+          sudo chown -R $USER:$USER /var/www/buspos
           sudo chmod -R 755 /var/www/buspos
           
-          echo "📂 Checking deployed files..."
+          echo "📂 Deployed files:"
           ls -la /var/www/buspos/ | head -20
           
-          echo "🔄 Creating service if not exists..."
+          echo "🔄 Setting up service..."
           if ! systemctl list-units --full -all | grep -q "buspos.service"; then
             sudo tee /etc/systemd/system/buspos.service > /dev/null <<'EOF'
           [Unit]
@@ -157,7 +95,6 @@ jobs:
           EOF
             sudo systemctl daemon-reload
             sudo systemctl enable buspos.service
-            echo "✅ Service created"
           fi
           
           echo "🔄 Restarting service..."
