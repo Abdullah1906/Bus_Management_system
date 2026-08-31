@@ -78,8 +78,9 @@ jobs:
         port: ${{ secrets.EC2_PORT || 22 }}
         source: "./publish/*"
         target: "/var/www/buspos"
-        strip_prefix: "publish"
         rm: true
+        strip_components: 1  # ✅ এইটা use করুন strip_prefix এর পরিবর্তে
+        debug: true
 
     - name: Deploy and Restart Service
       uses: appleboy/ssh-action@v1.0.3
