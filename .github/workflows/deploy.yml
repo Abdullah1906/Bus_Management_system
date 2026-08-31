@@ -3,7 +3,7 @@ name: Deploy .NET App to AWS EC2
 on:
   push:
     branches:
-      - main  # main ব্রাঞ্চে push হলে pipeline চলবে
+      - main
 
 jobs:
   build-and-deploy:
@@ -18,36 +18,62 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x' # আপনার .NET ভার্সন দিন (যেমন 6.0, 7.0, 8.0)
+        dotnet-version: '8.0.x'
 
     # ৩. Restore & Build
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore "Bus Pos Solution.sln"
 
     - name: Build Project
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build "Bus Pos Solution.sln" --configuration Release --no-restore
 
-    # ৪. Publish করা
-    - name: Publish App
-      run: dotnet publish -c Release -o ./publish --no-build
+    # ৪. Publish API Project (শুধু API project publish করুন)
+    - name: Publish API
+      run: dotnet publish bps.api/bps.api.csproj -c Release -o ./publish --no-build
 
-    # ৫. EC2 সার্ভারে ফাইল পাঠানো (Deploying via SCP)
+    # ৫. পাবলিশ করা ফাইল লিস্ট চেক করুন (Debugging)
+    - name: List published files
+      run: ls -la ./publish/
+
+    # ৬. EC2 সার্ভারে ফাইল পাঠানো
     - name: Transfer files to EC2
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
         source: "./publish/*"
-        target: "/var/www/mydotnetapp" # EC2-এর যে ফোল্ডারে ফাইল রাখতে চান
+        target: "/var/www/buspos"
         strip_prefix: "publish"
+        rm: true  # পুরনো ফাইল ডিলিট করে নতুন কপি করবে
 
-    # ৬. EC2-তে Application Restart করা
-    - name: Restart Service on EC2
+    # ৭. EC2-তে Permission ও Service Restart
+    - name: Deploy and Restart Service
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
         script: |
-          sudo systemctl restart mydotnetapp.service
+          # ফোল্ডারের permission ঠিক করা
+          sudo chown -R $USER:$USER /var/www/buspos
+          sudo chmod -R 755 /var/www/buspos
+          
+          # .NET service restart (যদি systemd service থাকে)
+          sudo systemctl restart buspos.service
+          
+          # অথবা যদি Kestrel-run করেন
+          # sudo pkill -f "dotnet.*bps.api.dll" || true
+          # cd /var/www/buspos
+          # nohup dotnet bps.api.dll --urls="http://0.0.0.0:5000" &
+          
+          # Service status check
+          sudo systemctl status buspos.service --no-pager || true
+
+    # ৮. (Optional) Health Check
+    - name: Health Check
+      run: |
+        sleep 10
+        curl -f http://${{ secrets.EC2_HOST }}:5000/health || echo "Health check failed"
