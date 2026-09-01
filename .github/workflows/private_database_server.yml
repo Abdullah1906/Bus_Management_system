@@ -53,5 +53,46 @@ jobs:
               echo '\''export PATH=\"\$PATH:/opt/mssql-tools18/bin\"'\'' >> ~/.bashrc
               export PATH=\"\$PATH:/opt/mssql-tools18/bin\"
 
+              echo \"===> 8. Fixing Missing Dependencies (libldap) <===\"
+              cd /tmp
+              wget -q http://archive.ubuntu.com/ubuntu/pool/main/o/openldap/libldap-2.5-0_2.5.20+dfsg-0ubuntu0.22.04.1_amd64.deb
+              sudo apt-get install -y ./libldap-2.5-0_2.5.20+dfsg-0ubuntu0.22.04.1_amd64.deb
+
+              echo \"===> 9. Checking Missing Dynamic Libraries <===\"
+              ldd /opt/mssql/bin/sqlservr | grep \"not found\" || echo \"No missing libraries!\"
+
+              echo \"===> 10. Resetting Service & Starting MSSQL <===\"
+              sudo systemctl reset-failed mssql-server.service
+              sudo systemctl enable mssql-server
+              sudo systemctl start mssql-server
+
+              echo \"===> 12. Copying BPS.bak & Setting Permissions <===\"
+              sudo cp /home/ubuntu/BPS.bak /var/opt/mssql/data/
+              sudo chown mssql:mssql /var/opt/mssql/data/BPS.bak
+
+              echo \"===> 14. Restoring Database with Automatic Fallback / Password Reset <===\"
+              PASS=\"${{ secrets.DB_PASSWORD }}\"
+              
+              # প্রথমবার Restore চেষ্টা করা
+              if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
+                -Q \"RESTORE DATABASE BPS FROM DISK = '/var/opt/mssql/data/BPS.bak' WITH MOVE 'BPS' TO '/var/opt/mssql/data/BPS.mdf', MOVE 'BPS_log' TO '/var/opt/mssql/data/BPS_log.ldf', REPLACE\"; then
+                  echo \"===> Restore Successful on First Attempt! <===\"
+              else
+                  echo \"===> Login Failed! Resetting SA Password and Retrying... <===\"
+                  sudo systemctl stop mssql-server
+                  
+                  # SA পাসওয়ার্ড নতুন করে সেট করা
+                  sudo MSSQL_SA_PASSWORD=\"\$PASS\" /opt/mssql/bin/mssql-conf set-sa-password
+                  sudo systemctl start mssql-server
+                  
+                  # পুনরায় Restore করা
+                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
+                    -Q \"RESTORE DATABASE BPS FROM DISK = '/var/opt/mssql/data/BPS.bak' WITH MOVE 'BPS' TO '/var/opt/mssql/data/BPS.mdf', MOVE 'BPS_log' TO '/var/opt/mssql/data/BPS_log.ldf', REPLACE\"
+              fi
+
+              echo \"===> 15. Verifying Restored Databases <===\"
+              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
+                -Q \"SELECT name FROM sys.databases;\"
+
               
             '"
