@@ -36,4 +36,23 @@ jobs:
               echo \"===> 4. Installing MSSQL Server 2022 <===\"
               sudo apt update
               sudo apt install -y mssql-server
+
+              echo \"===> 5. Configuring MSSQL Non-Interactively <===\"
+              sudo MSSQL_SA_PASSWORD=\"${{ secrets.MSSQL_SA_PASSWORD }}\" \
+                   MSSQL_PID=\"Express\" \
+                   ACCEPT_EULA=\"Y\" \
+                   MSSQL_LCID=1033 \
+                   /opt/mssql/bin/mssql-conf -n setup
+
+              echo \"===> 6. Installing MSSQL Tools 18 <===\"
+              curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+              sudo apt update
+              sudo ACCEPT_EULA=Y apt install -y mssql-tools18 unixodbc-dev
+
+              echo \"===> 7. Setting Environment PATH <===\"
+              echo '\''export PATH=\"\$PATH:/opt/mssql-tools18/bin\"'\'' >> ~/.bashrc
+              export PATH=\"\$PATH:/opt/mssql-tools18/bin\"
+
+              echo \"===> 8. Checking MSSQL Service Status <===\"
+              sudo systemctl status mssql-server --no-pager
             '"
