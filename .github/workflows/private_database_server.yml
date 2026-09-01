@@ -70,27 +70,36 @@ jobs:
               sudo cp /home/ubuntu/BPS.bak /var/opt/mssql/data/
               sudo chown mssql:mssql /var/opt/mssql/data/BPS.bak
 
-              echo \"===> 14. Restoring Database with Automatic Fallback / Password Reset <===\"
+              echo \"===> 14. Restoring Database using SQL Script File <===\"
               PASS=\"${{ secrets.DB_PASSWORD }}\"
               
-              RESTORE_QUERY=\"RESTORE DATABASE BPS FROM DISK = N'/var/opt/mssql/data/BPS.bak' WITH MOVE N'BPS' TO N'/var/opt/mssql/data/BPS.mdf', MOVE N'BPS_log' TO N'/var/opt/mssql/data/BPS_log.ldf', REPLACE;\"
+              # ১. একটি temp.sql ফাইল তৈরি করা (কোটেশনের ঝামেলা ছাড়া)
+              cat << 'EOF' > /tmp/restore.sql
+              RESTORE DATABASE BPS 
+              FROM DISK = '/var/opt/mssql/data/BPS.bak' 
+              WITH MOVE 'BPS' TO '/var/opt/mssql/data/BPS.mdf', 
+                  MOVE 'BPS_log' TO '/var/opt/mssql/data/BPS_log.ldf', 
+                  REPLACE;
+              GO
+              EOF
 
-              if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"\$RESTORE_QUERY\"; then
-                  echo \"===> Restore Successful on First Attempt! <===\"
+              # ২. SQL Script রান করা
+              if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -i /tmp/restore.sql; then
+                  echo \"===> Restore Executed Successfully! <===\"
               else
-                  echo \"===> Resetting SA Password and Retrying Restore... <===\"
+                  echo \"===> Login Failed or Query Error! Resetting SA Password and Retrying... <===\"
                   sudo systemctl stop mssql-server
                   sudo MSSQL_SA_PASSWORD=\"\$PASS\" /opt/mssql/bin/mssql-conf set-sa-password
                   sudo systemctl start mssql-server
-                  
-                  # সার্ভিস পুরোপুরি স্টার্ট হওয়া পর্যন্ত ২ সেকেন্ড ওয়েট
                   sleep 2
                   
-                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"\$RESTORE_QUERY\"
+                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -i /tmp/restore.sql
               fi
+
+              # ৩. ফাইল মুছে ফেলা
+              rm -f /tmp/restore.sql
 
               echo \"===> 15. Verifying Restored Databases <===\"
               /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"SELECT name FROM sys.databases;\"
-
               
             '"
