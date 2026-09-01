@@ -1,0 +1,39 @@
+name: Deploy Key Pair to Bastion Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-bastion:
+    runs-run-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH key and Connect to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # ১. SSH ডিরেক্টরি তৈরি (যদি না থাকে)
+            if [ ! -d ~/.ssh ]; then
+              mkdir -p ~/.ssh
+              chmod 700 ~/.ssh
+              echo "SSH directory created successfully."
+            else
+              echo "SSH directory already exists."
+            fi
+
+            if [ ! -f ~/.ssh/bastion_key ]; then
+              ssh-keygen -t rsa -b 4096 -f ~/.ssh/bastion_key -N ""
+              echo "Key pair created successfully!"
+            else
+              echo "Key pair already exists."
+            fi
+
+            # ৩. সঠিক পারমিশন নিশ্চিত করা
+            chmod 600 ~/.ssh/bastion_key
+            chmod 644 ~/.ssh/bastion_key.pub

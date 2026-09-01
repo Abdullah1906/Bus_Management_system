@@ -1,0 +1,64 @@
+name: nginx to AWS EC2
+
+on:
+  workflow_dispatch: # 👈 শুধু ম্যানুয়ালি রান করার জন্য
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Install and Setup Nginx on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
+        script: |
+          echo "🔍 Checking Nginx..."
+          
+          if command -v nginx &> /dev/null; then
+            echo "✅ Nginx already installed: $(nginx -v 2>&1)"
+          else
+            echo "📥 Installing Nginx..."
+            sudo apt-get update
+            sudo apt-get install -y nginx
+            sudo systemctl enable nginx
+            sudo systemctl start nginx
+            echo "✅ Nginx installed successfully!"
+          fi
+
+          echo "🔄 Configuring Nginx Reverse Proxy..."
+          
+          # Default config রিমুভ
+          sudo rm -f /etc/nginx/sites-enabled/default
+
+          # Bus POS-এর জন্য Nginx কনফিগারেশন তৈরি
+          sudo tee /etc/nginx/sites-available/buspos > /dev/null <<'EOF'
+          server {
+              listen 80;
+              server_name _; # আপনার Domain থাকলে নাম লিখুন (যেমন: api.example.com)
+
+              location / {
+                  proxy_pass         http://localhost:5000;
+                  proxy_http_version 1.1;
+                  proxy_set_header   Upgrade $http_upgrade;
+                  proxy_set_header   Connection keep-alive;
+                  proxy_set_header   Host $host;
+                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header   X-Forwarded-Proto $scheme;
+              }
+          }
+          EOF
+
+          # Enable configuration
+          sudo ln -sf /etc/nginx/sites-available/buspos /etc/nginx/sites-enabled/
+
+          # Test Nginx Config
+          sudo nginx -t
+
+          # Restart Nginx
+          sudo systemctl restart nginx
+          echo "✅ Nginx configured and restarted!"
