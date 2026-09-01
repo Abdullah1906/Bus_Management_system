@@ -17,7 +17,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem \
             ubuntu@${{ secrets.EC2_HOST }} \
-            "ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem ubuntu@${{ vars.PRIVATE_HOST }} '
+            "ssh -o StrictHostKeyChecking=no -i ~/.ssh/abd_bs_ubuntu.pem ubuntu@${{ vars.PRIVATE_HOST }} '
               echo \"===> 1. Cloning Repo & Copying BPS.bak <===\"
               rm -rf Bus_Management_system &&
               git clone https://github.com/Abdullah1906/Bus_Management_system.git &&
