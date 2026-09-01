@@ -10,14 +10,21 @@ jobs:
     steps:
     - name: Update appsettings.Production.json on server
       env:
-        APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_PRODUCTION_JSON }}
+        DB_SERVER: ${{ secrets.DB_SERVER }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        ADMIN_PHONE: ${{ secrets.ADMIN_PHONE }}
+        JWT_KEY: ${{ secrets.JWT_KEY }}
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT || 22 }}
-        envs: APPSETTINGS_JSON
+        envs: DB_SERVER,DB_NAME,DB_USER,DB_PASSWORD,ADMIN_EMAIL,ADMIN_PASSWORD,ADMIN_PHONE,JWT_KEY
         script: |
           APP_DIR="/var/www/buspos"
           CONFIG_FILE="$APP_DIR/appsettings.json"
@@ -28,10 +35,39 @@ jobs:
           fi
 
           echo "✍️ Writing new config..."
-          echo "$APPSETTINGS_JSON" | sudo tee "$CONFIG_FILE" > /dev/null
+          sudo tee "$CONFIG_FILE" > /dev/null <<EOF
+          {
+            "ConnectionStrings": {
+              "DefaultConnection": "Server=${DB_SERVER};Database=${DB_NAME};User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true;"
+            },
+            "AdminSeed": {
+              "Password": "${ADMIN_PASSWORD}",
+              "Email": "${ADMIN_EMAIL}",
+              "PhoneNumber": "${ADMIN_PHONE}"
+            },
+            "Jwt": {
+              "Key": "${JWT_KEY}",
+              "Issuer": "BPS.API",
+              "Audience": "BPS.Angular",
+              "ExpirationMinutes": 60
+            },
+            "Logging": {
+              "LogLevel": {
+                "Default": "Information",
+                "Microsoft.AspNetCore": "Warning"
+              }
+            },
+            "AllowedHosts": "*"
+          }
+          EOF
 
-          echo "✅ New config written:"
-          cat "$CONFIG_FILE"
+          echo "🔍 Validating JSON..."
+          if ! python3 -m json.tool "$CONFIG_FILE" > /dev/null; then
+            echo "❌ Invalid JSON! Restoring backup."
+            sudo cp "$CONFIG_FILE.bak."* "$CONFIG_FILE" 2>/dev/null || true
+            exit 1
+          fi
+          echo "✅ Config is valid JSON."
 
           echo "🔄 Restarting service..."
           sudo systemctl restart buspos.service
