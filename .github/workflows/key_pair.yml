@@ -13,10 +13,13 @@ jobs:
 
       - name: Set up SSH key and Connect to Server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: EC2_SSH_KEY
           script: |
             # ১. SSH ডিরেক্টরি তৈরি (যদি না থাকে)
             if [ ! -d ~/.ssh ]; then
@@ -27,13 +30,12 @@ jobs:
               echo "SSH directory already exists."
             fi
 
-            if [ ! -f ~/.ssh/bastion_key ]; then
-              ssh-keygen -t rsa -b 4096 -f ~/.ssh/bastion_key -N ""
-              echo "Key pair created successfully!"
+            # ২. প্রাইভেট কি (Private Key) ফাইল তৈরি
+            KEY_FILE=~/.ssh/abd_bs_ubuntu.pem
+            if [ ! -f "$KEY_FILE" ]; then
+              echo "$EC2_SSH_KEY" > "$KEY_FILE"
+              chmod 600 "$KEY_FILE"
+              echo "Key pair file created successfully!"
             else
               echo "Key pair already exists."
             fi
-
-            # ৩. সঠিক পারমিশন নিশ্চিত করা
-            chmod 600 ~/.ssh/bastion_key
-            chmod 644 ~/.ssh/bastion_key.pub

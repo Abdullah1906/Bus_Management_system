@@ -1,0 +1,45 @@
+name: Update appsettings.json on EC2
+
+on:
+  workflow_dispatch:   # Actions ট্যাব থেকে manually run করবেন
+
+jobs:
+  update-config:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Update appsettings.Production.json on server
+      env:
+        APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_PRODUCTION_JSON }}
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT || 22 }}
+        envs: APPSETTINGS_JSON
+        script: |
+          APP_DIR="/var/www/buspos"
+          CONFIG_FILE="$APP_DIR/appsettings.json"
+
+          echo "📝 Backing up existing config..."
+          if [ -f "$CONFIG_FILE" ]; then
+            sudo cp "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
+          fi
+
+          echo "✍️ Writing new config..."
+          echo "$APPSETTINGS_JSON" | sudo tee "$CONFIG_FILE" > /dev/null
+
+          echo "✅ New config written:"
+          cat "$CONFIG_FILE"
+
+          echo "🔄 Restarting service..."
+          sudo systemctl restart buspos.service
+
+          sleep 3
+
+          echo "📊 Service status:"
+          sudo systemctl status buspos.service --no-pager
+
+          echo "📋 Recent logs:"
+          sudo journalctl -u buspos.service -n 20 --no-pager
