@@ -5,7 +5,7 @@ on:
 
 jobs:
   setup-bastion:
-    runs-run-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
