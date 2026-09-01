@@ -18,9 +18,22 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem \
             ubuntu@${{ secrets.EC2_HOST }} \
             "ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem ubuntu@${{ vars.PRIVATE_HOST }} '
+              echo \"===> 1. Cloning Repo & Copying BPS.bak <===\"
               rm -rf Bus_Management_system &&
               git clone https://github.com/Abdullah1906/Bus_Management_system.git &&
               cd Bus_Management_system && 
               cp \"Bus Pos Solution/Database/BPS.bak\" /home/ubuntu/BPS.bak &&
               echo COPIED_OK
+            
+              echo \"===> 2. System Update & Installing Prerequisites <===\"
+              sudo apt update && sudo apt upgrade -y
+              sudo apt install -y curl gnupg2 software-properties-common
+
+              echo \"===> 3. Adding Microsoft Repository Keys <===\"
+              curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg
+              curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list | sudo tee /etc/apt/sources.list.d/mssql-server-2022.list
+
+              echo \"===> 4. Installing MSSQL Server 2022 <===\"
+              sudo apt update
+              sudo apt install -y mssql-server
             '"
