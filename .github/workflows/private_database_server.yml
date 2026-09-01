@@ -73,26 +73,24 @@ jobs:
               echo \"===> 14. Restoring Database with Automatic Fallback / Password Reset <===\"
               PASS=\"${{ secrets.DB_PASSWORD }}\"
               
-              # প্রথমবার Restore চেষ্টা করা
-              if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
-                -Q \"RESTORE DATABASE BPS FROM DISK = '/var/opt/mssql/data/BPS.bak' WITH MOVE 'BPS' TO '/var/opt/mssql/data/BPS.mdf', MOVE 'BPS_log' TO '/var/opt/mssql/data/BPS_log.ldf', REPLACE\"; then
+              RESTORE_QUERY=\"RESTORE DATABASE BPS FROM DISK = N'/var/opt/mssql/data/BPS.bak' WITH MOVE N'BPS' TO N'/var/opt/mssql/data/BPS.mdf', MOVE N'BPS_log' TO N'/var/opt/mssql/data/BPS_log.ldf', REPLACE;\"
+
+              if /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"\$RESTORE_QUERY\"; then
                   echo \"===> Restore Successful on First Attempt! <===\"
               else
-                  echo \"===> Login Failed! Resetting SA Password and Retrying... <===\"
+                  echo \"===> Resetting SA Password and Retrying Restore... <===\"
                   sudo systemctl stop mssql-server
-                  
-                  # SA পাসওয়ার্ড নতুন করে সেট করা
                   sudo MSSQL_SA_PASSWORD=\"\$PASS\" /opt/mssql/bin/mssql-conf set-sa-password
                   sudo systemctl start mssql-server
                   
-                  # পুনরায় Restore করা
-                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
-                    -Q \"RESTORE DATABASE BPS FROM DISK = '/var/opt/mssql/data/BPS.bak' WITH MOVE 'BPS' TO '/var/opt/mssql/data/BPS.mdf', MOVE 'BPS_log' TO '/var/opt/mssql/data/BPS_log.ldf', REPLACE\"
+                  # সার্ভিস পুরোপুরি স্টার্ট হওয়া পর্যন্ত ২ সেকেন্ড ওয়েট
+                  sleep 2
+                  
+                  /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"\$RESTORE_QUERY\"
               fi
 
               echo \"===> 15. Verifying Restored Databases <===\"
-              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C \
-                -Q \"SELECT name FROM sys.databases;\"
+              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"\$PASS\" -C -Q \"SELECT name FROM sys.databases;\"
 
               
             '"
