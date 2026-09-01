@@ -32,10 +32,10 @@ jobs:
           echo "🔄 Configuring Nginx Reverse Proxy..."
           
           # Default config রিমুভ
-          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo rm -f /etc/nginx/sites-available/default
 
           # Bus POS-এর জন্য Nginx কনফিগারেশন তৈরি
-          sudo tee /etc/nginx/sites-available/buspos > /dev/null <<'EOF'
+          sudo tee /etc/nginx/sites-available/default > /dev/null <<'EOF'
           server {
               listen 80;
               server_name _; # আপনার Domain থাকলে নাম লিখুন (যেমন: api.example.com)
@@ -54,7 +54,8 @@ jobs:
           EOF
 
           # Enable configuration
-          sudo ln -sf /etc/nginx/sites-available/buspos /etc/nginx/sites-enabled/
+          ls -l /etc/nginx/sites-enabled/
+
 
           # Test Nginx Config
           sudo nginx -t
