@@ -38,7 +38,7 @@ jobs:
               sudo apt install -y mssql-server
 
               echo \"===> 5. Configuring MSSQL Non-Interactively <===\"
-              sudo MSSQL_SA_PASSWORD=\"${{ secrets.MSSQL_SA_PASSWORD }}\" \
+              sudo MSSQL_SA_PASSWORD=\"${{ secrets.DB_PASSWORD }}\" \
                    MSSQL_PID=\"Express\" \
                    ACCEPT_EULA=\"Y\" \
                    MSSQL_LCID=1033 \
@@ -53,6 +53,5 @@ jobs:
               echo '\''export PATH=\"\$PATH:/opt/mssql-tools18/bin\"'\'' >> ~/.bashrc
               export PATH=\"\$PATH:/opt/mssql-tools18/bin\"
 
-              echo \"===> 8. Checking MSSQL Service Status <===\"
-              sudo systemctl status mssql-server --no-pager
+              
             '"
