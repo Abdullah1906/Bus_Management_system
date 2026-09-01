@@ -1,0 +1,26 @@
+name: Fetch BPS.bak via Bastion
+ 
+on:
+  workflow_dispatch:
+ 
+jobs:
+  fetch-database-backup:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Save pem key (exact same file used manually)
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > abd_bs_ubuntu.pem
+          chmod 400 abd_bs_ubuntu.pem
+ 
+      - name: SSH bastion -> private server -> clone repo -> copy BPS.bak
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem \
+            ubuntu@${{ secrets.EC2_HOST }} \
+            "ssh -o StrictHostKeyChecking=no -i ./abd_bs_ubuntu.pem ubuntu@${{ vars.PRIVATE_HOST }} '
+              rm -rf Bus_Management_system &&
+              git clone https://github.com/Abdullah1906/Bus_Management_system.git &&
+              cd Bus_Management_system && 
+              cp "Bus Pos Solution/Database/BPS.bak" /home/ubuntu/BPS.bak && sudo chmod 644 /home/ubuntu/BPS.bak &&
+              echo COPIED_OK
+            '"
