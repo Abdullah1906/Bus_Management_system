@@ -1,6 +1,6 @@
 # 🚌 Bus Position Solution (BPS) & Fleet Management System
 
-![CI/CD Pipeline](https://github.com/Abdullah1906/Bus_Management_system/actions/workflows/main.yml/badge.svg)
+![CI/CD Pipeline](https://github.com/Abdullah1906/Bus_Management_system/actions/workflows/deploy.yml/badge.svg)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat&logo=dotnet)
 ![Angular](https://img.shields.io/badge/Angular-17%2B-DD0031?style=flat&logo=angular)
 ![SQL Server](https://img.shields.io/badge/SQL%20Server-2019%2B-CC292B?style=flat&logo=microsoftsqlserver)
