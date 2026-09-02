@@ -7,7 +7,7 @@
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-blue)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Bus Position Solution (BPS)** is an enterprise-grade, full-stack fleet management system engineered to streamline daily bus operations, track real-time position records, automate trip schedules, manage fare/tip distribution, and deliver actionable operational reporting.
+**Bus Position Solution (BPS)** is an enterprise-grade, full-stack fleet management system engineered to streamline daily bus operations, automate trip schedules, manage fare/tip distribution, and deliver actionable operational reporting.
 
 ---
 
