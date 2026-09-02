@@ -13,8 +13,8 @@
 
 ## 🌟 Key Modules & Features
 
-* 📍 **Place & Route Management:** Define, map, and manage transit routes, checkpoints, and terminal stops with precision.
-* 📋 **Trip & Fleet Records:** Record real-time bus positions, operational status, trip schedules, and vehicle logs.
+* 📍 **Place & Route Management:** Define, routes, and manage transit routes, checkpoints, and terminal stops with precision.
+* 📋 **Trip & Fleet Records:** keep buses detail, operational status, trip schedules, and vehicle logs.
 * 💰 **Tip & Fare Engine:** Automated logic for daily fare calculations, trip tip allocations, driver-conductor payouts, and revenue metrics.
 * 📊 **Dynamic Data Grid & Reporting:** Highly customisable UI tables featuring advanced filtering, column toggling, and exportable PDF summaries.
 
@@ -39,7 +39,7 @@ The solution adheres strictly to **Clean Architecture** to ensure high maintaina
 ├── 1. Core Domain Layer     --> Entities, Value Objects & Domain Exceptions
 ├── 2. Application Layer     --> Use Cases, DTOs, CQRS/Service Interfaces & Validation
 ├── 3. Infrastructure Layer  --> ADO.NET Repositories, SQL Queries & External Services
-└── 4. Presentation Layer    --> RESTful APIs (.NET Web API) & Angular Web Client
+└── 4. Presentation Layer    --> RESTful APIs (.NET Web API)
 
 * **Domain Layer:** Pure business entities and domain logic, isolated from frameworks.
 * **Application Layer:** Encapsulates business workflows, service abstractions, DTO mappings, and request handlers.
@@ -52,7 +52,7 @@ The solution adheres strictly to **Clean Architecture** to ensure high maintaina
 
 This repository includes a fully configured **CI/CD Pipeline** using **GitHub Actions** (`.github/workflows/`):
 
-* **Automated Builds:** Triggered on every `push` and `pull_request` to verify backend and frontend compilation.
+* **Automated Builds:** Triggered on every workflow dispatch( for `push` and `pull_request` can be do ) to  verify backend and frontend compilation.
 * **Continuous Integration:** Automatically runs unit tests, code validation, and linter checks.
 * **Continuous Deployment:** Builds production assets for .NET API and Angular web clients automatically.
 
@@ -65,7 +65,7 @@ This repository includes a fully configured **CI/CD Pipeline** using **GitHub Ac
 Ensure you have the following installed locally:
 * **.NET 8.0 SDK** or higher
 * **Node.js** (v18+) & **Angular CLI**
-* **Microsoft SQL Server** (2019 or later)
+* **Microsoft SQL Server** (2022)
 
 ---
 
