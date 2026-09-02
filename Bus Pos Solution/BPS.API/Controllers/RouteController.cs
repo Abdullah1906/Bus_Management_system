@@ -1,4 +1,4 @@
-﻿using BPS.Application.DTOs.BusSeats;
+﻿using BPS.Application.DTOs.Routes;
 using BPS.Application.Interfaces;
 using BPS.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,50 +7,57 @@ using Microsoft.AspNetCore.Mvc;
 namespace BPS.API.Controllers
 {
     [ApiController]
-    [Route("api/v1/admin/buses/{busId:int}/seats")]
+    [Route("api/v1/admin/routes")]
     [Authorize(Roles = "Admin")]
-    public class BusSeatController : ControllerBase
+    public class RouteController : ControllerBase
     {
-        private readonly IBusSeatService _busSeatService;
+        private readonly IRouteService _routeService;
 
-        public BusSeatController(
-            IBusSeatService busSeatService)
+        public RouteController(
+            IRouteService routeService)
         {
-            _busSeatService = busSeatService;
+            _routeService = routeService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetSeats(
-            int busId)
+        public async Task<IActionResult> GetAll()
         {
             var result =
-                await _busSeatService
-                    .GetByBusIdAsync(busId);
+                await _routeService.GetAllAsync();
+
+            return Ok(result);
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(
+            int id)
+        {
+            var result =
+                await _routeService.GetByIdAsync(id);
+
+            if (result == null)
+                return NotFound();
 
             return Ok(result);
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(
-            int busId,
-            [FromBody] CreateBusSeatDto dto)
+            [FromBody] CreateRouteDto dto)
         {
             var result =
-                await _busSeatService.CreateAsync(
-                    busId,
-                    dto);
+                await _routeService.CreateAsync(dto);
 
             return Ok(result);
         }
 
-        [HttpPut("{id:long}")]
+        [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(
-            int busId,
-            long id,
-            [FromBody] UpdateBusSeatDto dto)
+            int id,
+            [FromBody] UpdateRouteDto dto)
         {
             var result =
-                await _busSeatService.UpdateAsync(
+                await _routeService.UpdateAsync(
                     id,
                     dto);
 
@@ -60,17 +67,16 @@ namespace BPS.API.Controllers
             return Ok(new
             {
                 message =
-                    "Seat updated successfully."
+                    "Route updated successfully."
             });
         }
 
-        [HttpDelete("{id:long}")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(
-            int busId,
-            long id)
+            int id)
         {
             var result =
-                await _busSeatService.DeleteAsync(id);
+                await _routeService.DeleteAsync(id);
 
             if (!result)
                 return NotFound();
@@ -78,18 +84,17 @@ namespace BPS.API.Controllers
             return Ok(new
             {
                 message =
-                    "Seat deleted successfully."
+                    "Route deactivated successfully."
             });
         }
 
-        [HttpPatch("{id:long}/status")]
+        [HttpPatch("{id:int}/status")]
         public async Task<IActionResult> ChangeStatus(
-            int busId,
-            long id,
+            int id,
             [FromBody] bool isActive)
         {
             var result =
-                await _busSeatService.ChangeStatusAsync(
+                await _routeService.ChangeStatusAsync(
                     id,
                     isActive);
 
@@ -99,8 +104,8 @@ namespace BPS.API.Controllers
             return Ok(new
             {
                 message = isActive
-                    ? "Seat activated successfully."
-                    : "Seat deactivated successfully."
+                    ? "Route activated successfully."
+                    : "Route deactivated successfully."
             });
         }
     }

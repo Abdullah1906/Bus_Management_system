@@ -2076,3 +2076,375 @@ BEGIN
     WHERE Id = @Id;
 END;
 GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE dbo.SP_Route_Create
+    @FromPlace NVARCHAR(150),
+    @ToPlace NVARCHAR(150),
+    @DistanceKm DECIMAL(10,2) = NULL,
+    @EstimatedMinutes INT = NULL,
+    @CreatedBy NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @FromPlace = LTRIM(RTRIM(@FromPlace));
+    SET @ToPlace = LTRIM(RTRIM(@ToPlace));
+
+    IF NULLIF(@FromPlace, '') IS NULL
+    BEGIN
+        THROW 50200, 'From place is required.', 1;
+    END;
+
+    IF NULLIF(@ToPlace, '') IS NULL
+    BEGIN
+        THROW 50201, 'To place is required.', 1;
+    END;
+
+    IF UPPER(@FromPlace) = UPPER(@ToPlace)
+    BEGIN
+        THROW 50202, 'From place and To place cannot be same.', 1;
+    END;
+
+    IF @DistanceKm IS NOT NULL
+       AND @DistanceKm < 0
+    BEGIN
+        THROW 50203, 'Distance cannot be negative.', 1;
+    END;
+
+    IF @EstimatedMinutes IS NOT NULL
+       AND @EstimatedMinutes <= 0
+    BEGIN
+        THROW 50204, 'Estimated minutes must be greater than zero.', 1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE UPPER(FromPlace) = UPPER(@FromPlace)
+          AND UPPER(ToPlace) = UPPER(@ToPlace)
+          AND IsActive = 1
+    )
+    BEGIN
+        THROW 50205, 'This route already exists.', 1;
+    END;
+
+    INSERT INTO dbo.Routes
+    (
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy
+    )
+    VALUES
+    (
+        @FromPlace,
+        @ToPlace,
+        @DistanceKm,
+        @EstimatedMinutes,
+        1,
+        GETUTCDATE(),
+        @CreatedBy
+    );
+
+    DECLARE @Id INT = SCOPE_IDENTITY();
+
+    SELECT
+        Id,
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy,
+        UpdatedAt,
+        UpdatedBy
+    FROM dbo.Routes
+    WHERE Id = @Id;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Route_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy,
+        UpdatedAt,
+        UpdatedBy
+    FROM dbo.Routes
+    ORDER BY
+        FromPlace,
+        ToPlace,
+        Id DESC;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Route_GetById
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy,
+        UpdatedAt,
+        UpdatedBy
+    FROM dbo.Routes
+    WHERE Id = @Id;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Route_Update
+    @Id INT,
+    @FromPlace NVARCHAR(150),
+    @ToPlace NVARCHAR(150),
+    @DistanceKm DECIMAL(10,2) = NULL,
+    @EstimatedMinutes INT = NULL,
+    @IsActive BIT,
+    @UpdatedBy NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @FromPlace = LTRIM(RTRIM(@FromPlace));
+    SET @ToPlace = LTRIM(RTRIM(@ToPlace));
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE Id = @Id
+    )
+    BEGIN
+        THROW 50210, 'Route not found.', 1;
+    END;
+
+    IF NULLIF(@FromPlace, '') IS NULL
+    BEGIN
+        THROW 50211, 'From place is required.', 1;
+    END;
+
+    IF NULLIF(@ToPlace, '') IS NULL
+    BEGIN
+        THROW 50212, 'To place is required.', 1;
+    END;
+
+    IF UPPER(@FromPlace) = UPPER(@ToPlace)
+    BEGIN
+        THROW 50213,
+            'From place and To place cannot be same.',
+            1;
+    END;
+
+    IF @DistanceKm IS NOT NULL
+       AND @DistanceKm < 0
+    BEGIN
+        THROW 50214,
+            'Distance cannot be negative.',
+            1;
+    END;
+
+    IF @EstimatedMinutes IS NOT NULL
+       AND @EstimatedMinutes <= 0
+    BEGIN
+        THROW 50215,
+            'Estimated minutes must be greater than zero.',
+            1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE UPPER(FromPlace) = UPPER(@FromPlace)
+          AND UPPER(ToPlace) = UPPER(@ToPlace)
+          AND Id <> @Id
+          AND IsActive = 1
+    )
+    BEGIN
+        THROW 50216,
+            'Another active route with same origin and destination exists.',
+            1;
+    END;
+
+    UPDATE dbo.Routes
+    SET
+        FromPlace = @FromPlace,
+        ToPlace = @ToPlace,
+        DistanceKm = @DistanceKm,
+        EstimatedMinutes = @EstimatedMinutes,
+        IsActive = @IsActive,
+        UpdatedAt = GETUTCDATE(),
+        UpdatedBy = @UpdatedBy
+    WHERE Id = @Id;
+
+    SELECT
+        Id,
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy,
+        UpdatedAt,
+        UpdatedBy
+    FROM dbo.Routes
+    WHERE Id = @Id;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Route_Delete
+    @Id INT,
+    @UpdatedBy NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE Id = @Id
+    )
+    BEGIN
+        THROW 50220, 'Route not found.', 1;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE Id = @Id
+          AND IsActive = 0
+    )
+    BEGIN
+        THROW 50221, 'Route is already inactive.', 1;
+    END;
+
+    UPDATE dbo.Routes
+    SET
+        IsActive = 0,
+        UpdatedAt = GETUTCDATE(),
+        UpdatedBy = @UpdatedBy
+    WHERE Id = @Id;
+
+    SELECT 1 AS Result;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_Route_ChangeStatus
+    @Id INT,
+    @IsActive BIT,
+    @UpdatedBy NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.Routes
+        WHERE Id = @Id
+    )
+    BEGIN
+        THROW 50230, 'Route not found.', 1;
+    END;
+
+    IF @IsActive = 1
+       AND EXISTS
+       (
+           SELECT 1
+           FROM dbo.Routes r
+           WHERE r.Id <> @Id
+             AND UPPER(r.FromPlace) =
+                 UPPER(
+                    (SELECT FromPlace
+                     FROM dbo.Routes
+                     WHERE Id = @Id)
+                 )
+             AND UPPER(r.ToPlace) =
+                 UPPER(
+                    (SELECT ToPlace
+                     FROM dbo.Routes
+                     WHERE Id = @Id)
+                 )
+             AND r.IsActive = 1
+       )
+    BEGIN
+        THROW 50231,
+            'Another active route with same origin and destination exists.',
+            1;
+    END;
+
+    UPDATE dbo.Routes
+    SET
+        IsActive = @IsActive,
+        UpdatedAt = GETUTCDATE(),
+        UpdatedBy = @UpdatedBy
+    WHERE Id = @Id;
+
+    SELECT
+        Id,
+        FromPlace,
+        ToPlace,
+        DistanceKm,
+        EstimatedMinutes,
+        IsActive,
+        CreatedAt,
+        CreatedBy,
+        UpdatedAt,
+        UpdatedBy
+    FROM dbo.Routes
+    WHERE Id = @Id;
+END;
+GO

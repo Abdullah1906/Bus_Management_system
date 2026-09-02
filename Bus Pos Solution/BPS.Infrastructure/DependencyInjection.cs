@@ -32,6 +32,7 @@ namespace BPS.Infrastructure
             services.AddScoped<IBookingRepository,BookingRepository>();
             services.AddScoped<IBusRepository,BusRepository>();
             services.AddScoped<IBusSeatRepository,BusSeatRepository>();
+            services.AddScoped<IRouteRepository,RouteRepository>();
 
             // Security
             services.AddScoped<IPasswordHasher, PasswordHasherService>();

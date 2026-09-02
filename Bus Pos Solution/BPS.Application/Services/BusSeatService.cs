@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace BPS.Application.Services
 {
-    public class BusSeatService
+    public class BusSeatService:IBusSeatService
     {
         private readonly IBusSeatRepository _repository;
 
