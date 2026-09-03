@@ -9,7 +9,8 @@ namespace BPS.Application.Interfaces
 {
     public interface ITripScheduleService
     {
-        Task<TripScheduleDto> CreateAsync(
-            CreateTripScheduleDto dto);
+        Task<TripScheduleDto> CreateAsync(CreateTripScheduleDto dto);
+
+        Task<IReadOnlyList<TripScheduleDto>> GetAllAsync(CancellationToken cancellationToken = default);
     }
 }

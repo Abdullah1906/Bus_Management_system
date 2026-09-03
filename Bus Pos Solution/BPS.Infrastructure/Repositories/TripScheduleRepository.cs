@@ -1,4 +1,5 @@
-﻿using BPS.Application.Interfaces;
+﻿using BPS.Application.DTOs.Trips;
+using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
@@ -129,6 +130,105 @@ namespace BPS.Infrastructure.Repositories
                         : reader.GetString(
                             reader.GetOrdinal("CreatedBy"))
             };
+        }
+
+
+        public async Task<IReadOnlyList<TripScheduleDto>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+        {
+            var result = new List<TripScheduleDto>();
+
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+
+            await using var command =
+                new SqlCommand(
+                    "dbo.SP_TripSchedule_GetAll",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+
+            await using var reader =
+                await command.ExecuteReaderAsync(
+                    cancellationToken);
+
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                result.Add(
+                    new TripScheduleDto
+                    {
+                        Id =
+                            reader.GetInt64(
+                                reader.GetOrdinal("Id")),
+
+                        BusId =
+                            reader.GetInt32(
+                                reader.GetOrdinal("BusId")),
+
+                        BusName =
+                            reader.GetString(
+                                reader.GetOrdinal("BusName")),
+
+                        BusNumber =
+                            reader.GetString(
+                                reader.GetOrdinal("BusNumber")),
+
+                        RouteId =
+                            reader.GetInt32(
+                                reader.GetOrdinal("RouteId")),
+
+                        FromPlace =
+                            reader.GetString(
+                                reader.GetOrdinal("FromPlace")),
+
+                        ToPlace =
+                            reader.GetString(
+                                reader.GetOrdinal("ToPlace")),
+
+                        TripDate =
+                            reader.GetDateTime(
+                                reader.GetOrdinal("TripDate")),
+
+                        DepartureTime =
+                            reader.GetTimeSpan(
+                                reader.GetOrdinal("DepartureTime")),
+
+                        ArrivalTime =
+                            reader.IsDBNull(
+                                reader.GetOrdinal("ArrivalTime"))
+                                ? null
+                                : reader.GetTimeSpan(
+                                    reader.GetOrdinal("ArrivalTime")),
+
+                        Fare =
+                            reader.GetDecimal(
+                                reader.GetOrdinal("Fare")),
+
+                        IsActive =
+                            reader.GetBoolean(
+                                reader.GetOrdinal("IsActive")),
+
+                        CreatedAt =
+                            reader.GetDateTime(
+                                reader.GetOrdinal("CreatedAt")),
+
+                        CreatedBy =
+                            reader.IsDBNull(
+                                reader.GetOrdinal("CreatedBy"))
+                                ? null
+                                : reader.GetString(
+                                    reader.GetOrdinal("CreatedBy"))
+                    });
+            }
+
+
+            return result;
         }
     }
 }

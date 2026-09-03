@@ -28,8 +28,7 @@ namespace BPS.Application.Services
                 httpContextAccessor;
         }
 
-        public async Task<TripScheduleDto> CreateAsync(
-            CreateTripScheduleDto dto)
+        public async Task<TripScheduleDto> CreateAsync( CreateTripScheduleDto dto)
         {
             if (dto == null)
                 throw new ArgumentNullException(
@@ -100,6 +99,13 @@ namespace BPS.Application.Services
                 CreatedAt = result.CreatedAt,
                 CreatedBy = result.CreatedBy
             };
+        }
+
+
+        public async Task<IReadOnlyList<TripScheduleDto>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            return await _repository.GetAllAsync(
+                cancellationToken);
         }
     }
 }

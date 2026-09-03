@@ -2448,3 +2448,49 @@ BEGIN
     WHERE Id = @Id;
 END;
 GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        t.Id,
+        t.BusId,
+        b.BusName,
+        b.BusNumber,
+
+        t.RouteId,
+        r.FromPlace,
+        r.ToPlace,
+
+        t.TripDate,
+        t.DepartureTime,
+        t.ArrivalTime,
+        t.Fare,
+
+        t.IsActive,
+        t.CreatedAt,
+        t.CreatedBy
+
+    FROM dbo.Trips t
+
+    INNER JOIN dbo.Buses b
+        ON b.Id = t.BusId
+
+    INNER JOIN dbo.Routes r
+        ON r.Id = t.RouteId
+
+    ORDER BY
+        t.TripDate ASC,
+        t.DepartureTime ASC,
+        t.Id DESC;
+END;
+GO
