@@ -2494,3 +2494,143 @@ BEGIN
         t.Id DESC;
 END;
 GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE dbo.SP_TripSchedule_GetById
+    @Id BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        t.Id,
+        t.BusId,
+        b.BusName,
+        b.BusNumber,
+        t.RouteId,
+        r.FromPlace,
+        r.ToPlace,
+        t.TripDate,
+        t.DepartureTime,
+        t.ArrivalTime,
+        t.Fare,
+        t.IsActive,
+        t.CreatedAt,
+        t.CreatedBy
+    FROM dbo.Trips t
+    INNER JOIN dbo.Buses b
+        ON b.Id = t.BusId
+    INNER JOIN dbo.Routes r
+        ON r.Id = t.RouteId
+    WHERE t.Id = @Id;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE dbo.SP_TripSchedule_Update
+    @Id BIGINT,
+    @BusId INT,
+    @RouteId INT,
+    @TripDate DATE,
+    @DepartureTime TIME,
+    @ArrivalTime TIME = NULL,
+    @Fare DECIMAL(18,2),
+    @IsActive BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Trips
+    SET
+        BusId = @BusId,
+        RouteId = @RouteId,
+        TripDate = @TripDate,
+        DepartureTime = @DepartureTime,
+        ArrivalTime = @ArrivalTime,
+        Fare = @Fare,
+        IsActive = @IsActive,
+        UpdatedAt = GETDATE()
+    WHERE Id = @Id;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        SELECT CAST(0 AS BIT) AS Success;
+        RETURN;
+    END;
+
+    SELECT CAST(1 AS BIT) AS Success;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_Delete
+    @Id BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.Bookings
+        WHERE TripId = @Id
+    )
+    BEGIN
+        THROW 50001, 'Trip cannot be deleted because booking exists.', 1;
+    END;
+
+    DELETE FROM dbo.TripSeats
+    WHERE TripId = @Id;
+
+    DELETE FROM dbo.Trips
+    WHERE Id = @Id;
+
+    SELECT
+        CAST(
+            CASE
+                WHEN @@ROWCOUNT > 0 THEN 1
+                ELSE 0
+            END
+        AS BIT) AS Success;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_ChangeStatus
+    @Id BIGINT,
+    @IsActive BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Trips
+    SET
+        IsActive = @IsActive,
+        UpdatedAt = GETDATE()
+    WHERE Id = @Id;
+
+    SELECT CAST(
+        CASE
+            WHEN @@ROWCOUNT > 0 THEN 1
+            ELSE 0
+        END
+    AS BIT) AS Success;
+END;
+GO

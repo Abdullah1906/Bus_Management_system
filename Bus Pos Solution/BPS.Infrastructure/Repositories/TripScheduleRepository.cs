@@ -1,4 +1,4 @@
-﻿using BPS.Application.DTOs.Trips;
+﻿using BPS.Application.DTOs.TripSchedules;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
@@ -229,6 +229,211 @@ namespace BPS.Infrastructure.Repositories
 
 
             return result;
+        }
+
+        public async Task<TripScheduleDto?> GetByIdAsync(long id,CancellationToken cancellationToken = default)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command =
+                new SqlCommand(
+                    "dbo.SP_TripSchedule_GetById",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Id",
+                SqlDbType.BigInt).Value = id;
+
+            await using var reader =
+                await command.ExecuteReaderAsync(
+                    cancellationToken);
+
+            if (!await reader.ReadAsync(
+                cancellationToken))
+            {
+                return null;
+            }
+
+            return new TripScheduleDto
+            {
+                Id = reader.GetInt64(
+                    reader.GetOrdinal("Id")),
+
+                BusId = reader.GetInt32(
+                    reader.GetOrdinal("BusId")),
+
+                BusName = reader.GetString(
+                    reader.GetOrdinal("BusName")),
+
+                BusNumber = reader.GetString(
+                    reader.GetOrdinal("BusNumber")),
+
+                RouteId = reader.GetInt32(
+                    reader.GetOrdinal("RouteId")),
+
+                FromPlace = reader.GetString(
+                    reader.GetOrdinal("FromPlace")),
+
+                ToPlace = reader.GetString(
+                    reader.GetOrdinal("ToPlace")),
+
+                TripDate = reader.GetDateTime(
+                    reader.GetOrdinal("TripDate")),
+
+                DepartureTime = reader.GetTimeSpan(
+                    reader.GetOrdinal("DepartureTime")),
+
+                ArrivalTime =
+                    reader.IsDBNull(
+                        reader.GetOrdinal("ArrivalTime"))
+                        ? null
+                        : reader.GetTimeSpan(
+                            reader.GetOrdinal("ArrivalTime")),
+
+                Fare = reader.GetDecimal(
+                    reader.GetOrdinal("Fare")),
+
+                IsActive = reader.GetBoolean(
+                    reader.GetOrdinal("IsActive")),
+
+                CreatedAt = reader.GetDateTime(
+                    reader.GetOrdinal("CreatedAt")),
+
+                CreatedBy =
+                    reader.IsDBNull(
+                        reader.GetOrdinal("CreatedBy"))
+                        ? null
+                        : reader.GetString(
+                            reader.GetOrdinal("CreatedBy"))
+            };
+        }
+        public async Task<bool> UpdateAsync(long id,Trip trip, CancellationToken cancellationToken = default)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command =
+                new SqlCommand(
+                    "dbo.SP_TripSchedule_Update",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Id",
+                SqlDbType.BigInt).Value = id;
+
+            command.Parameters.Add(
+                "@BusId",
+                SqlDbType.Int).Value = trip.BusId;
+
+            command.Parameters.Add(
+                "@RouteId",
+                SqlDbType.Int).Value = trip.RouteId;
+
+            command.Parameters.Add(
+                "@TripDate",
+                SqlDbType.Date).Value =
+                    trip.TripDate.Date;
+
+            command.Parameters.Add(
+                "@DepartureTime",
+                SqlDbType.Time).Value =
+                    trip.DepartureTime;
+
+            command.Parameters.Add(
+                "@ArrivalTime",
+                SqlDbType.Time).Value =
+                    trip.ArrivalTime.HasValue
+                        ? trip.ArrivalTime.Value
+                        : DBNull.Value;
+
+            var fareParameter =
+                command.Parameters.Add(
+                    "@Fare",
+                    SqlDbType.Decimal);
+
+            fareParameter.Precision = 18;
+            fareParameter.Scale = 2;
+            fareParameter.Value = trip.Fare;
+
+            command.Parameters.Add(
+                "@IsActive",
+                SqlDbType.Bit).Value =
+                    trip.IsActive;
+
+            var result =
+                await command.ExecuteScalarAsync(
+                    cancellationToken);
+
+            return result != null &&
+                   Convert.ToBoolean(result);
+        }
+
+        public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command =
+                new SqlCommand(
+                    "dbo.SP_TripSchedule_Delete",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Id",
+                SqlDbType.BigInt).Value = id;
+
+            var result =
+                await command.ExecuteScalarAsync(
+                    cancellationToken);
+
+            return result != null &&
+                   Convert.ToBoolean(result);
+        }
+        public async Task<bool> ChangeStatusAsync(long id,bool isActive,CancellationToken cancellationToken = default)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await connection.OpenAsync(cancellationToken);
+
+            await using var command =
+                new SqlCommand(
+                    "dbo.SP_TripSchedule_ChangeStatus",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Id",
+                SqlDbType.BigInt).Value = id;
+
+            command.Parameters.Add(
+                "@IsActive",
+                SqlDbType.Bit).Value = isActive;
+
+            var result =
+                await command.ExecuteScalarAsync(
+                    cancellationToken);
+
+            return result != null &&
+                   Convert.ToBoolean(result);
         }
     }
 }

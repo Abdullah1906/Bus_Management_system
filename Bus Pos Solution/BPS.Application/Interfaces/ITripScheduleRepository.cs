@@ -1,4 +1,4 @@
-﻿using BPS.Application.DTOs.Trips;
+﻿using BPS.Application.DTOs.TripSchedules;
 using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -12,5 +12,22 @@ namespace BPS.Application.Interfaces
     {
         Task<Trip?> CreateScheduleAsync(Trip trip);
         Task<IReadOnlyList<TripScheduleDto>> GetAllAsync(CancellationToken cancellationToken = default);
+        Task<TripScheduleDto?> GetByIdAsync(
+        long id,
+        CancellationToken cancellationToken = default);
+
+        Task<bool> UpdateAsync(
+            long id,
+            Trip trip,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> DeleteAsync(
+            long id,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> ChangeStatusAsync(
+            long id,
+            bool isActive,
+            CancellationToken cancellationToken = default);
     }
 }

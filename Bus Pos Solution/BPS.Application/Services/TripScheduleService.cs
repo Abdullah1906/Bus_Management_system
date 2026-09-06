@@ -1,4 +1,4 @@
-﻿using BPS.Application.DTOs.Trips;
+﻿using BPS.Application.DTOs.TripSchedules;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using Microsoft.AspNetCore.Http;
@@ -106,6 +106,78 @@ namespace BPS.Application.Services
         {
             return await _repository.GetAllAsync(
                 cancellationToken);
+        }
+
+        public async Task<TripScheduleDto?> GetByIdAsync(long id,CancellationToken cancellationToken = default)
+            {
+                if (id <= 0)
+                    throw new ArgumentException("Invalid trip id.");
+
+                return await _repository.GetByIdAsync(
+                    id,
+                    cancellationToken);
+            }
+
+        public async Task<bool> UpdateAsync(long id,UpdateTripScheduleDto dto)
+        {
+            if (id <= 0)
+                throw new ArgumentException(
+                    "Invalid trip id.");
+
+            if (dto == null)
+                throw new ArgumentNullException(
+                    nameof(dto));
+
+            if (dto.BusId <= 0)
+                throw new ArgumentException(
+                    "Bus is required.");
+
+            if (dto.RouteId <= 0)
+                throw new ArgumentException(
+                    "Route is required.");
+
+            if (dto.TripDate == default)
+                throw new ArgumentException(
+                    "Trip date is required.");
+
+            if (dto.Fare < 0)
+                throw new ArgumentException(
+                    "Fare cannot be negative.");
+
+            var trip = new Trip
+            {
+                BusId = dto.BusId,
+                RouteId = dto.RouteId,
+                TripDate = dto.TripDate.Date,
+                DepartureTime = dto.DepartureTime,
+                ArrivalTime = dto.ArrivalTime,
+                Fare = dto.Fare,
+                IsActive = dto.IsActive
+            };
+
+            return await _repository.UpdateAsync(
+                id,
+                trip);
+        }
+
+        public async Task<bool> DeleteAsync(long id)
+        {
+            if (id <= 0)
+                throw new ArgumentException(
+                    "Invalid trip id.");
+
+            return await _repository.DeleteAsync(id);
+        }
+
+        public async Task<bool> ChangeStatusAsync(long id,bool isActive)
+        {
+            if (id <= 0)
+                throw new ArgumentException(
+                    "Invalid trip id.");
+
+            return await _repository.ChangeStatusAsync(
+                id,
+                isActive);
         }
     }
 }
