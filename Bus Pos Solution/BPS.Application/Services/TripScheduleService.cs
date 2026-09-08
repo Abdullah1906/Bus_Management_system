@@ -1,4 +1,5 @@
 ﻿using BPS.Application.DTOs.TripSchedules;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using Microsoft.AspNetCore.Http;
@@ -178,6 +179,38 @@ namespace BPS.Application.Services
             return await _repository.ChangeStatusAsync(
                 id,
                 isActive);
+        }
+        public async Task<IEnumerable<TripSearchResponseDto>> SearchAsync(
+        TripSearchDto request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (string.IsNullOrWhiteSpace(request.FromPlace))
+                throw new ArgumentException(
+                    "From place is required.");
+
+            if (string.IsNullOrWhiteSpace(request.ToPlace))
+                throw new ArgumentException(
+                    "To place is required.");
+
+            if (request.FromPlace.Trim()
+                .Equals(
+                    request.ToPlace.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException(
+                    "From place and To place cannot be the same.");
+            }
+
+            if (request.TripDate.Date < DateTime.UtcNow.Date)
+                throw new ArgumentException(
+                    "Trip date cannot be in the past.");
+
+            return await _repository.SearchAsync(
+                request.FromPlace.Trim(),
+                request.ToPlace.Trim(),
+                request.TripDate.Date);
         }
     }
 }

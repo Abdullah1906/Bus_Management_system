@@ -12,29 +12,30 @@ using System.Threading.Tasks;
 
 namespace BPS.Application.Services
 {
+
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _repository;
-
-        private readonly IHttpContextAccessor
-            _httpContextAccessor;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public BookingService(
             IBookingRepository repository,
             IHttpContextAccessor httpContextAccessor)
         {
             _repository = repository;
-
-            _httpContextAccessor =
-                httpContextAccessor;
+            _httpContextAccessor = httpContextAccessor;
         }
+
+
+        // ============================================================
+        // LOCK SEATS
+        // ============================================================
 
         public async Task<LockSeatsResponseDto> LockSeatsAsync(
             LockSeatsDto dto)
         {
             if (dto == null)
-                throw new ArgumentNullException(
-                    nameof(dto));
+                throw new ArgumentNullException(nameof(dto));
 
             if (dto.TripId <= 0)
                 throw new ArgumentException(
@@ -47,11 +48,16 @@ namespace BPS.Application.Services
                     "At least one seat is required.");
             }
 
+
+            // --------------------------------------------------------
+            // Get Customer ID from JWT
+            // --------------------------------------------------------
+
             var customerIdClaim =
-                _httpContextAccessor
-                    .HttpContext?
+                _httpContextAccessor.HttpContext?
                     .User?
-                    .FindFirst(ClaimTypes.NameIdentifier)?
+                    .FindFirst(
+                        ClaimTypes.NameIdentifier)?
                     .Value;
 
             if (!long.TryParse(
@@ -62,13 +68,19 @@ namespace BPS.Application.Services
                     "Customer identity not found.");
             }
 
+
+            // --------------------------------------------------------
+            // Lock seats
+            // --------------------------------------------------------
+
             var seats =
                 await _repository.LockSeatsAsync(
                     dto.TripId,
                     dto.TripSeatIds,
                     customerId);
 
-            var seatList = seats.ToList();
+            var seatList =
+                seats.ToList();
 
             if (seatList.Count == 0)
             {
@@ -76,8 +88,20 @@ namespace BPS.Application.Services
                     "No seats were locked.");
             }
 
+
+            // --------------------------------------------------------
+            // Locked Until
+            // --------------------------------------------------------
+
             var lockedUntil =
-                seatList.First().LockedUntil!.Value;
+                seatList
+                    .First()
+                    .LockedUntil!.Value;
+
+
+            // --------------------------------------------------------
+            // Response
+            // --------------------------------------------------------
 
             return new LockSeatsResponseDto
             {
@@ -89,10 +113,15 @@ namespace BPS.Application.Services
                     .Select(x => new LockedSeatDto
                     {
                         TripSeatId = x.Id,
+
                         TripId = x.TripId,
+
                         BusSeatId = x.BusSeatId,
+
                         SeatNumber = x.SeatNumber,
+
                         Status = x.Status,
+
                         LockedUntil =
                             x.LockedUntil!.Value
                     })
@@ -101,18 +130,32 @@ namespace BPS.Application.Services
         }
 
 
+        // ============================================================
+        // CONFIRM BOOKING
+        // ============================================================
 
         public async Task<ConfirmBookingResponseDto>
-        ConfirmBookingAsync(
-            ConfirmBookingDto dto)
+            ConfirmBookingAsync(
+                ConfirmBookingDto dto)
         {
             if (dto == null)
-                throw new ArgumentNullException(
-                    nameof(dto));
+                throw new ArgumentNullException(nameof(dto));
+
+
+            // --------------------------------------------------------
+            // Validate Trip
+            // --------------------------------------------------------
 
             if (dto.TripId <= 0)
+            {
                 throw new ArgumentException(
                     "Trip is required.");
+            }
+
+
+            // --------------------------------------------------------
+            // Validate passengers
+            // --------------------------------------------------------
 
             if (dto.Passengers == null ||
                 dto.Passengers.Count == 0)
@@ -120,6 +163,11 @@ namespace BPS.Application.Services
                 throw new ArgumentException(
                     "At least one passenger is required.");
             }
+
+
+            // --------------------------------------------------------
+            // Validate payment method
+            // --------------------------------------------------------
 
             if (string.IsNullOrWhiteSpace(
                     dto.PaymentMethod))
@@ -129,11 +177,11 @@ namespace BPS.Application.Services
             }
 
 
-         
-            // Validate passengers
-         
+            // --------------------------------------------------------
+            // Validate passenger information
+            // --------------------------------------------------------
 
-        foreach (var passenger in dto.Passengers)
+            foreach (var passenger in dto.Passengers)
             {
                 if (passenger.TripSeatId <= 0)
                 {
@@ -157,9 +205,9 @@ namespace BPS.Application.Services
             }
 
 
-            
-            // Prevent duplicate TripSeatId
-            
+            // --------------------------------------------------------
+            // Duplicate seat validation
+            // --------------------------------------------------------
 
             var duplicateSeat =
                 dto.Passengers
@@ -173,13 +221,12 @@ namespace BPS.Application.Services
             }
 
 
-
-            // Get CustomerId from JWT
-
+            // --------------------------------------------------------
+            // Get Customer ID from JWT
+            // --------------------------------------------------------
 
             var customerIdClaim =
-                _httpContextAccessor
-                    .HttpContext?
+                _httpContextAccessor.HttpContext?
                     .User?
                     .FindFirst(
                         ClaimTypes.NameIdentifier)?
@@ -194,87 +241,81 @@ namespace BPS.Application.Services
             }
 
 
-
+            // --------------------------------------------------------
             // Convert passengers to JSON
-
+            // --------------------------------------------------------
 
             var passengersJson =
                 JsonSerializer.Serialize(
                     dto.Passengers);
 
 
+            // --------------------------------------------------------
+            // Confirm booking
+            // --------------------------------------------------------
 
-            // Call repository
+            var result =
+                await _repository.ConfirmBookingAsync(
+                    dto.TripId,
+                    customerId,
+                    dto.PaymentMethod,
+                    dto.TransactionId,
+                    passengersJson);
 
 
-            var booking =
-                await _repository
-                    .ConfirmBookingAsync(
-                        dto.TripId,
-                        customerId,
-                        dto.PaymentMethod,
-                        dto.TransactionId,
-                        passengersJson);
-
-
-            if (booking == null)
+            if (result == null)
             {
                 throw new InvalidOperationException(
                     "Booking could not be confirmed.");
             }
 
 
-            // Return response
+            // --------------------------------------------------------
+            // Booking
+            // --------------------------------------------------------
+
+            var booking =
+                result.Booking;
 
 
-        return new ConfirmBookingResponseDto
-        {
-            BookingId = booking.Id,
+            // --------------------------------------------------------
+            // Final response
+            // --------------------------------------------------------
 
-            PNR = booking.PNR,
+            return new ConfirmBookingResponseDto
+            {
+                BookingId = booking.Id,
 
-            TripId = booking.TripId,
+                PNR = booking.PNR,
 
-            CustomerId = booking.CustomerId,
+                TripId = booking.TripId,
 
-            TotalAmount =
-                booking.TotalAmount,
+                CustomerId = booking.CustomerId,
 
-            BookingStatus =
-                booking.BookingStatus,
+                TotalAmount = booking.TotalAmount,
 
-            PaymentStatus = 2,
+                BookingStatus =
+                    (byte)booking.BookingStatus,
 
-            PaymentMethod =
-                dto.PaymentMethod,
+                PaymentStatus =
+                    (byte)booking.PaymentStatus,
 
-            TransactionId =
-            dto.TransactionId,
+                PaymentMethod =
+                    booking.PaymentMethod,
 
-            CreatedAt =
-                booking.CreatedAt,
+                TransactionId =
+                    booking.TransactionId,
 
-            ConfirmedAt =
-                booking.ConfirmedAt,
+                CreatedAt =
+                    booking.CreatedAt,
 
-            Passengers =
-                dto.Passengers
-                    .Select(x => new ConfirmedPassengerDto
-                    {
-                        TripSeatId =
-                            x.TripSeatId,
+                ConfirmedAt =
+                    booking.ConfirmedAt,
 
-                        PassengerName =
-                            x.PassengerName,
-
-                        PassengerPhone =
-                            x.PassengerPhone,
-
-                        PassengerNID =
-                            x.PassengerNID
-                    })
-                    .ToList()
-        };
+                Passengers =
+                    result.Passengers
+            };
         }
     }
+
 }

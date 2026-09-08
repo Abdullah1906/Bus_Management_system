@@ -20,4 +20,6 @@ namespace BPS.Application.DTOs.Bookings
 
         public decimal Fare { get; set; }
     }
+
 }
+

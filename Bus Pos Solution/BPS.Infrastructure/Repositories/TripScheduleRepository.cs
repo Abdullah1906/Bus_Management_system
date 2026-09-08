@@ -1,4 +1,5 @@
 ﻿using BPS.Application.DTOs.TripSchedules;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
@@ -434,6 +435,92 @@ namespace BPS.Infrastructure.Repositories
 
             return result != null &&
                    Convert.ToBoolean(result);
+        }
+
+        public async Task<IEnumerable<TripSearchResponseDto>> SearchAsync(
+        string fromPlace,
+        string toPlace,
+        DateTime tripDate)
+        {
+            var trips = new List<TripSearchResponseDto>();
+
+            using var connection = _connectionFactory.CreateConnection();
+
+            using var command = new SqlCommand(
+                "SP_Trip_Search",
+                connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            command.Parameters.Add(
+                "@FromPlace",
+                SqlDbType.NVarChar, 150
+            ).Value = fromPlace;
+
+            command.Parameters.Add(
+                "@ToPlace",
+                SqlDbType.NVarChar, 150
+            ).Value = toPlace;
+
+            command.Parameters.Add(
+                "@TripDate",
+                SqlDbType.Date
+            ).Value = tripDate.Date;
+
+            await connection.OpenAsync();
+
+            using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                trips.Add(new TripSearchResponseDto
+                {
+                    TripId = reader.GetInt64(
+                        reader.GetOrdinal("TripId")),
+
+                    BusId = reader.GetInt32(
+                        reader.GetOrdinal("BusId")),
+
+                    BusName = reader.GetString(
+                        reader.GetOrdinal("BusName")),
+
+                    BusNumber = reader.GetString(
+                        reader.GetOrdinal("BusNumber")),
+
+                    RouteId = reader.GetInt32(
+                        reader.GetOrdinal("RouteId")),
+
+                    FromPlace = reader.GetString(
+                        reader.GetOrdinal("FromPlace")),
+
+                    ToPlace = reader.GetString(
+                        reader.GetOrdinal("ToPlace")),
+
+                    TripDate = reader.GetDateTime(
+                        reader.GetOrdinal("TripDate")),
+
+                    DepartureTime = reader.GetTimeSpan(
+                        reader.GetOrdinal("DepartureTime")),
+
+                    ArrivalTime = reader.IsDBNull(
+                        reader.GetOrdinal("ArrivalTime"))
+                        ? null
+                        : reader.GetTimeSpan(
+                            reader.GetOrdinal("ArrivalTime")),
+
+                    Fare = reader.GetDecimal(
+                        reader.GetOrdinal("Fare")),
+
+                    TotalSeats = reader.GetInt32(
+                        reader.GetOrdinal("TotalSeats")),
+
+                    AvailableSeats = reader.GetInt32(
+                        reader.GetOrdinal("AvailableSeats"))
+                });
+            }
+
+            return trips;
         }
     }
 }

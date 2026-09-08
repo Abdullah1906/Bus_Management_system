@@ -1,4 +1,5 @@
 ﻿using BPS.Application.DTOs.TripSchedules;
+using BPS.Application.DTOs.TripSearch;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,5 +27,6 @@ namespace BPS.Application.Interfaces
         Task<bool> ChangeStatusAsync(
             long id,
             bool isActive);
+        Task<IEnumerable<TripSearchResponseDto>> SearchAsync(TripSearchDto request);
     }
 }

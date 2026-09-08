@@ -1,4 +1,4 @@
-USE [BPS]
+﻿USE [BPS]
 GO
 
 SET ANSI_NULLS ON
@@ -846,7 +846,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[SP_ConfirmBooking]
+ALTER PROCEDURE [dbo].[SP_ConfirmBooking]
     @TripId BIGINT,
     @CustomerId BIGINT,
     @PassengersJson NVARCHAR(MAX),
@@ -858,7 +858,6 @@ BEGIN
     SET XACT_ABORT ON;
 
     BEGIN TRY
-
         BEGIN TRANSACTION;
 
         DECLARE
@@ -867,52 +866,29 @@ BEGIN
             @TotalAmount DECIMAL(18,2),
             @ConfirmedAt DATETIME2 = GETUTCDATE();
 
-
         ---------------------------------------------------------
         -- 1. Validate Customer
         ---------------------------------------------------------
-        IF NOT EXISTS
-        (
-            SELECT 1
-            FROM Customers
-            WHERE Id = @CustomerId
-              AND IsActive = 1
-        )
+        IF NOT EXISTS (SELECT 1 FROM Users WHERE Id = @CustomerId AND IsActive = 1)
         BEGIN
-            THROW 50200,
-                'Customer not found or inactive.',
-                1;
+            THROW 50200, 'Admin Counter not found or inactive.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 2. Validate Trip
         ---------------------------------------------------------
-        IF NOT EXISTS
-        (
-            SELECT 1
-            FROM Trips
-            WHERE Id = @TripId
-              AND IsActive = 1
-        )
+        IF NOT EXISTS (SELECT 1 FROM Trips WHERE Id = @TripId AND IsActive = 1)
         BEGIN
-            THROW 50201,
-                'Trip not found or inactive.',
-                1;
+            THROW 50201, 'Trip not found or inactive.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 3. Validate JSON
         ---------------------------------------------------------
-        IF @PassengersJson IS NULL
-           OR ISJSON(@PassengersJson) <> 1
+        IF @PassengersJson IS NULL OR ISJSON(@PassengersJson) <> 1
         BEGIN
-            THROW 50202,
-                'Invalid passenger information.',
-                1;
+            THROW 50202, 'Invalid passenger information.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 4. Parse passenger data
@@ -925,69 +901,37 @@ BEGIN
             PassengerNID NVARCHAR(50)
         );
 
-
-        INSERT INTO @Passengers
-        (
-            TripSeatId,
-            PassengerName,
-            PassengerPhone,
-            PassengerNID
-        )
-        SELECT
-            TripSeatId,
-            PassengerName,
-            PassengerPhone,
-            PassengerNID
+        INSERT INTO @Passengers (TripSeatId, PassengerName, PassengerPhone, PassengerNID)
+        SELECT TripSeatId, PassengerName, PassengerPhone, PassengerNID
         FROM OPENJSON(@PassengersJson)
         WITH
         (
-            TripSeatId BIGINT
-                '$.tripSeatId',
-
-            PassengerName NVARCHAR(150)
-                '$.passengerName',
-
-            PassengerPhone NVARCHAR(30)
-                '$.passengerPhone',
-
-            PassengerNID NVARCHAR(50)
-                '$.passengerNID'
+            TripSeatId BIGINT '$.TripSeatId',
+            PassengerName NVARCHAR(150) '$.PassengerName',
+            PassengerPhone NVARCHAR(30) '$.PassengerPhone',
+            PassengerNID NVARCHAR(50) '$.PassengerNID'
         );
-
 
         ---------------------------------------------------------
         -- 5. Validate passenger count
         ---------------------------------------------------------
-        IF NOT EXISTS
-        (
-            SELECT 1
-            FROM @Passengers
-        )
+        IF NOT EXISTS (SELECT 1 FROM @Passengers)
         BEGIN
-            THROW 50203,
-                'At least one passenger is required.',
-                1;
+            THROW 50203, 'At least one passenger is required.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 6. Validate passenger information
         ---------------------------------------------------------
         IF EXISTS
         (
-            SELECT 1
-            FROM @Passengers
-            WHERE PassengerName IS NULL
-               OR LTRIM(RTRIM(PassengerName)) = ''
-               OR PassengerPhone IS NULL
-               OR LTRIM(RTRIM(PassengerPhone)) = ''
+            SELECT 1 FROM @Passengers
+            WHERE PassengerName IS NULL OR LTRIM(RTRIM(PassengerName)) = ''
+               OR PassengerPhone IS NULL OR LTRIM(RTRIM(PassengerPhone)) = ''
         )
         BEGIN
-            THROW 50204,
-                'Passenger name and phone are required.',
-                1;
+            THROW 50204, 'Passenger name and phone are required.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 7. Lock TripSeats
@@ -1000,209 +944,125 @@ BEGIN
             Fare DECIMAL(18,2)
         );
 
-
-        INSERT INTO @LockedSeats
-        (
-            TripSeatId,
-            BusSeatId,
-            SeatNumber,
-            Fare
-        )
-        SELECT
-            ts.Id,
-            ts.BusSeatId,
-            bs.SeatNumber,
-            t.Fare
+        INSERT INTO @LockedSeats (TripSeatId, BusSeatId, SeatNumber, Fare)
+        SELECT ts.Id, ts.BusSeatId, bs.SeatNumber, t.Fare
         FROM TripSeats ts WITH (UPDLOCK, HOLDLOCK)
-        INNER JOIN Trips t
-            ON t.Id = ts.TripId
-        INNER JOIN BusSeats bs
-            ON bs.Id = ts.BusSeatId
-        INNER JOIN @Passengers p
-            ON p.TripSeatId = ts.Id
+        INNER JOIN Trips t ON t.Id = ts.TripId
+        INNER JOIN BusSeats bs ON bs.Id = ts.BusSeatId
+        INNER JOIN @Passengers p ON p.TripSeatId = ts.Id
         WHERE ts.TripId = @TripId
           AND ts.Status = 2
           AND ts.LockedByCustomerId = @CustomerId
           AND ts.LockedUntil > GETUTCDATE();
 
-
         ---------------------------------------------------------
         -- 8. Every requested seat must be valid and locked
         ---------------------------------------------------------
-        IF
-        (
-            SELECT COUNT(*)
-            FROM @LockedSeats
-        )
-        <>
-        (
-            SELECT COUNT(*)
-            FROM @Passengers
-        )
+        IF (SELECT COUNT(*) FROM @LockedSeats) <> (SELECT COUNT(*) FROM @Passengers)
         BEGIN
-            THROW 50205,
-                'One or more seats are not locked by this customer or the lock has expired.',
-                1;
+            THROW 50205, 'One or more seats are not locked by this customer or the lock has expired.', 1;
         END;
-
 
         ---------------------------------------------------------
         -- 9. Calculate total
         ---------------------------------------------------------
-        SELECT
-            @TotalAmount = SUM(Fare)
-        FROM @LockedSeats;
-
+        SELECT @TotalAmount = SUM(Fare) FROM @LockedSeats;
 
         ---------------------------------------------------------
-        -- 10. Generate PNR
+        -- 10. Generate Unique PNR
         ---------------------------------------------------------
-        SET @PNR =
-            'BPS' +
-            CONVERT(CHAR(8), GETDATE(), 112) +
-            RIGHT(
-                '000000' +
-                CAST(
-                    ABS(CHECKSUM(NEWID()))
-                    AS VARCHAR(6)
-                ),
-                6
-            );
+        DECLARE @IsPnrUnique BIT = 0;
+        WHILE @IsPnrUnique = 0
+        BEGIN
+            SET @PNR = 'BPS' + 
+                       CONVERT(CHAR(8), GETUTCDATE(), 112) + 
+                       UPPER(SUBSTRING(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 1, 6));
 
+            IF NOT EXISTS (SELECT 1 FROM Bookings WHERE PNR = @PNR)
+            BEGIN
+                SET @IsPnrUnique = 1;
+            END
+        END;
 
         ---------------------------------------------------------
         -- 11. Create Booking
         ---------------------------------------------------------
-        INSERT INTO Bookings
-        (
-            PNR,
-            TripId,
-            CustomerId,
-            TotalAmount,
-            BookingStatus,
-            CreatedAt,
-            ConfirmedAt
-        )
-        VALUES
-        (
-            @PNR,
-            @TripId,
-            @CustomerId,
-            @TotalAmount,
-            2,
-            GETUTCDATE(),
-            @ConfirmedAt
-        );
+        INSERT INTO Bookings (PNR, TripId, CustomerId, TotalAmount, BookingStatus, CreatedAt, ConfirmedAt)
+        VALUES (@PNR, @TripId, @CustomerId, @TotalAmount, 2, GETUTCDATE(), @ConfirmedAt);
 
-
-        SET @BookingId =
-            CONVERT(BIGINT, SCOPE_IDENTITY());
-
+        SET @BookingId = CONVERT(BIGINT, SCOPE_IDENTITY());
 
         ---------------------------------------------------------
         -- 12. Create Booking Details
         ---------------------------------------------------------
-        INSERT INTO BookingDetails
-        (
-            BookingId,
-            TripSeatId,
-            PassengerName,
-            PassengerPhone,
-            PassengerNID,
-            Fare,
-            CreatedAt
-        )
-        SELECT
-            @BookingId,
-            ls.TripSeatId,
-            p.PassengerName,
-            p.PassengerPhone,
-            p.PassengerNID,
-            ls.Fare,
-            GETUTCDATE()
+        INSERT INTO BookingDetails (BookingId, TripSeatId, PassengerName, PassengerPhone, PassengerNID, Fare, CreatedAt)
+        SELECT @BookingId, ls.TripSeatId, p.PassengerName, p.PassengerPhone, p.PassengerNID, ls.Fare, GETUTCDATE()
         FROM @LockedSeats ls
-        INNER JOIN @Passengers p
-            ON p.TripSeatId = ls.TripSeatId;
-
+        INNER JOIN @Passengers p ON p.TripSeatId = ls.TripSeatId;
 
         ---------------------------------------------------------
         -- 13. Create Payment
         ---------------------------------------------------------
-        INSERT INTO Payments
-        (
-            BookingId,
-            Amount,
-            PaymentMethod,
-            TransactionId,
-            PaymentStatus,
-            PaidAt,
-            CreatedAt
-        )
-        VALUES
-        (
-            @BookingId,
-            @TotalAmount,
-            @PaymentMethod,
-            @TransactionId,
-            2,
-            GETUTCDATE(),
-            GETUTCDATE()
-        );
-
+        INSERT INTO Payments (BookingId, Amount, PaymentMethod, TransactionId, PaymentStatus, PaidAt, CreatedAt)
+        VALUES (@BookingId, @TotalAmount, @PaymentMethod, @TransactionId, 2, GETUTCDATE(), GETUTCDATE());
 
         ---------------------------------------------------------
         -- 14. Locked -> Booked
         ---------------------------------------------------------
         UPDATE ts
-        SET
-            Status = 3,
+        SET Status = 3,
             LockedByCustomerId = NULL,
             LockedUntil = NULL,
             BookedAt = GETUTCDATE()
         FROM TripSeats ts
-        INNER JOIN @LockedSeats ls
-            ON ls.TripSeatId = ts.Id;
-
+        INNER JOIN @LockedSeats ls ON ls.TripSeatId = ts.Id;
 
         ---------------------------------------------------------
         -- 15. Commit
         ---------------------------------------------------------
         COMMIT TRANSACTION;
 
-
         ---------------------------------------------------------
-        -- 16. Return Booking
+        -- 16. Return Booking (RESULT SET 1)
         ---------------------------------------------------------
         SELECT
-            b.Id AS BookingId,
+            CAST(b.Id AS BIGINT) AS BookingId,
             b.PNR,
-            b.TripId,
-            b.CustomerId,
+            CAST(b.TripId AS BIGINT) AS TripId,
+            CAST(b.CustomerId AS BIGINT) AS CustomerId,
             b.TotalAmount,
-            b.BookingStatus,
-            pay.PaymentStatus,
+            CAST(b.BookingStatus AS TINYINT) AS BookingStatus,
+            CAST(pay.PaymentStatus AS TINYINT) AS PaymentStatus,
             pay.PaymentMethod,
             pay.TransactionId,
             b.CreatedAt,
             b.ConfirmedAt
         FROM Bookings b
-        INNER JOIN Payments pay
-            ON pay.BookingId = b.Id
+        INNER JOIN Payments pay ON pay.BookingId = b.Id
         WHERE b.Id = @BookingId;
 
+        ---------------------------------------------------------
+        -- 17. Return Passengers (RESULT SET 2 - যুক্ত করা হলো)
+        ---------------------------------------------------------
+        SELECT
+            bd.TripSeatId,
+            ls.SeatNumber,
+            bd.PassengerName,
+            bd.PassengerPhone,
+            bd.PassengerNID,
+            bd.Fare
+        FROM BookingDetails bd
+        INNER JOIN @LockedSeats ls ON ls.TripSeatId = bd.TripSeatId
+        WHERE bd.BookingId = @BookingId;
 
     END TRY
-
     BEGIN CATCH
-
         IF @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
 
         THROW;
-
     END CATCH
 END;
-GO
 
 SET ANSI_NULLS ON
 GO
@@ -2632,5 +2492,81 @@ BEGIN
             ELSE 0
         END
     AS BIT) AS Success;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_Trip_Search
+    @FromPlace NVARCHAR(150),
+    @ToPlace NVARCHAR(150),
+    @TripDate DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        t.Id AS TripId,
+
+        b.Id AS BusId,
+        b.BusName,
+        b.BusNumber,
+
+        r.Id AS RouteId,
+        r.FromPlace,
+        r.ToPlace,
+
+        t.TripDate,
+        t.DepartureTime,
+        t.ArrivalTime,
+        t.Fare,
+
+        b.TotalSeats,
+
+        COUNT(
+            CASE
+                WHEN ts.Status = 1 THEN 1
+            END
+        ) AS AvailableSeats
+
+    FROM Trips t
+
+    INNER JOIN Buses b
+        ON b.Id = t.BusId
+
+    INNER JOIN Routes r
+        ON r.Id = t.RouteId
+
+    LEFT JOIN TripSeats ts
+        ON ts.TripId = t.Id
+
+    WHERE
+        t.IsActive = 1
+        AND b.IsActive = 1
+        AND r.IsActive = 1
+        AND t.TripDate = @TripDate
+        AND r.FromPlace = @FromPlace
+        AND r.ToPlace = @ToPlace
+
+    GROUP BY
+        t.Id,
+        b.Id,
+        b.BusName,
+        b.BusNumber,
+        r.Id,
+        r.FromPlace,
+        r.ToPlace,
+        t.TripDate,
+        t.DepartureTime,
+        t.ArrivalTime,
+        t.Fare,
+        b.TotalSeats
+
+    ORDER BY
+        t.DepartureTime;
 END;
 GO

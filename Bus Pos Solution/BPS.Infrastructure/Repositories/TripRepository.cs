@@ -1,4 +1,5 @@
-﻿using BPS.Application.Interfaces;
+﻿using BPS.Application.DTOs.TripSearch;
+using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;

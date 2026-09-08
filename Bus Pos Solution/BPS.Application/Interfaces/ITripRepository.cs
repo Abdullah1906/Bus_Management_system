@@ -1,4 +1,5 @@
-﻿using BPS.Domain.Entities;
+﻿using BPS.Application.DTOs.TripSearch;
+using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +22,8 @@ namespace BPS.Application.Interfaces
         Task<bool> DeleteAsync(
             long id,
             string? updatedBy);
+
+      
 
     }
 }

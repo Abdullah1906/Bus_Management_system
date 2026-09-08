@@ -7,7 +7,7 @@ namespace BPS.API.Controllers
 {
     [ApiController]
     [Route("api/v1/bookings")]
-    [Authorize(Roles = "Customer")]
+    //[Authorize(Roles = "Admin")]
     public class BookingController : ControllerBase
     {
         private readonly IBookingService _service;

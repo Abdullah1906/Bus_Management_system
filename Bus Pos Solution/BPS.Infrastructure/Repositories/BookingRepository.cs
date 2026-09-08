@@ -1,5 +1,7 @@
-﻿using BPS.Application.Interfaces;
+﻿using BPS.Application.DTOs.Bookings;
+using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
+using BPS.Domain.Enums;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
 using System;
@@ -12,15 +14,21 @@ using System.Threading.Tasks;
 
 namespace BPS.Infrastructure.Repositories
 {
+   
+
+
     public class BookingRepository : IBookingRepository
     {
         private readonly SqlConnectionFactory _connectionFactory;
 
-        public BookingRepository(
-            SqlConnectionFactory connectionFactory)
+        public BookingRepository(SqlConnectionFactory connectionFactory)
         {
             _connectionFactory = connectionFactory;
         }
+
+
+        // LOCK SEATS
+      
 
         public async Task<IEnumerable<TripSeat>> LockSeatsAsync(
             long tripId,
@@ -35,8 +43,7 @@ namespace BPS.Infrastructure.Repositories
                 throw new ArgumentException(
                     "At least one seat is required.");
 
-            var json =
-                JsonSerializer.Serialize(ids);
+            var json = JsonSerializer.Serialize(ids);
 
             var seats = new List<TripSeat>();
 
@@ -44,27 +51,22 @@ namespace BPS.Infrastructure.Repositories
                 _connectionFactory.CreateConnection();
 
             await using var command =
-                new SqlCommand(
-                    "SP_LockSeats",
-                    connection);
+                new SqlCommand("SP_LockSeats", connection);
 
             command.CommandType =
                 CommandType.StoredProcedure;
 
             command.Parameters.Add(
                 "@TripId",
-                SqlDbType.BigInt)
-                .Value = tripId;
+                SqlDbType.BigInt).Value = tripId;
 
             command.Parameters.Add(
                 "@TripSeatIds",
-                SqlDbType.NVarChar)
-                .Value = json;
+                SqlDbType.NVarChar).Value = json;
 
             command.Parameters.Add(
                 "@CustomerId",
-                SqlDbType.BigInt)
-                .Value = customerId;
+                SqlDbType.BigInt).Value = customerId;
 
             await connection.OpenAsync();
 
@@ -99,92 +101,86 @@ namespace BPS.Infrastructure.Repositories
         }
 
 
-        public async Task<Booking?> ConfirmBookingAsync(
-        long tripId,
-        long customerId,
-        string paymentMethod,
-        string? transactionId,
-        string passengersJson)
+
+        // CONFIRM BOOKING
+
+
+        public async Task<ConfirmBookingResult?> ConfirmBookingAsync(
+            long tripId,
+            long customerId,
+            string paymentMethod,
+            string? transactionId,
+            string passengersJson)
         {
-            await using var connection =
-                _connectionFactory.CreateConnection();
+            await using var connection = _connectionFactory.CreateConnection();
+            await using var command = new SqlCommand("SP_ConfirmBooking", connection);
+            command.CommandType = CommandType.StoredProcedure;
 
-            await using var command =
-                new SqlCommand(
-                    "SP_ConfirmBooking",
-                    connection);
-
-            command.CommandType =
-                CommandType.StoredProcedure;
-
-            command.Parameters.Add(
-                "@TripId",
-                SqlDbType.BigInt)
-                .Value = tripId;
-
-            command.Parameters.Add(
-                "@CustomerId",
-                SqlDbType.BigInt)
-                .Value = customerId;
-
-            command.Parameters.Add(
-                "@PassengersJson",
-                SqlDbType.NVarChar)
-                .Value = passengersJson;
-
-            command.Parameters.Add(
-                "@PaymentMethod",
-                SqlDbType.NVarChar,
-                50)
-                .Value = paymentMethod;
-
-            command.Parameters.Add(
-                "@TransactionId",
-                SqlDbType.NVarChar,
-                100)
-                .Value =
-                    (object?)transactionId
-                    ?? DBNull.Value;
+            command.Parameters.Add("@TripId", SqlDbType.BigInt).Value = tripId;
+            command.Parameters.Add("@CustomerId", SqlDbType.BigInt).Value = customerId;
+            command.Parameters.Add("@PassengersJson", SqlDbType.NVarChar).Value = passengersJson;
+            command.Parameters.Add("@PaymentMethod", SqlDbType.NVarChar, 50).Value = paymentMethod;
+            command.Parameters.Add("@TransactionId", SqlDbType.NVarChar, 100).Value = (object?)transactionId ?? DBNull.Value;
 
             await connection.OpenAsync();
+            await using var reader = await command.ExecuteReaderAsync();
 
-            await using var reader =
-                await command.ExecuteReaderAsync();
-
+            // RESULT SET 1: Booking + Payment information
             if (!await reader.ReadAsync())
                 return null;
 
-            return new Booking
+            var booking = new Booking
             {
-                Id = reader.GetInt64(
-                    reader.GetOrdinal("BookingId")),
+                // Safe Conversion ব্যবহার করা হয়েছে যাতে Cast Error না আসে
+                Id = Convert.ToInt64(reader["BookingId"]),
+                PNR = reader.GetString(reader.GetOrdinal("PNR")),
+                TripId = Convert.ToInt64(reader["TripId"]),
+                CustomerId = Convert.ToInt64(reader["CustomerId"]),
+                TotalAmount = reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
+                BookingStatus = (BookingStatus)Convert.ToByte(reader["BookingStatus"]),
+                PaymentStatus = (PaymentStatus)Convert.ToByte(reader["PaymentStatus"]),
+                PaymentMethod = reader.GetString(reader.GetOrdinal("PaymentMethod")),
+                TransactionId = reader.IsDBNull(reader.GetOrdinal("TransactionId"))
+                    ? null
+                    : reader.GetString(reader.GetOrdinal("TransactionId")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                ConfirmedAt = reader.IsDBNull(reader.GetOrdinal("ConfirmedAt"))
+                    ? null
+                    : reader.GetDateTime(reader.GetOrdinal("ConfirmedAt"))
+            };
 
-                PNR = reader.GetString(
-                    reader.GetOrdinal("PNR")),
+            // RESULT SET 2: Passenger + Seat + Fare information
+            var passengers = new List<ConfirmedPassengerDto>();
 
-                TripId = reader.GetInt64(
-                    reader.GetOrdinal("TripId")),
+            if (await reader.NextResultAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    passengers.Add(new ConfirmedPassengerDto
+                    {
+                        TripSeatId = Convert.ToInt64(reader["TripSeatId"]),
+                        SeatNumber = reader.GetString(reader.GetOrdinal("SeatNumber")),
+                        PassengerName = reader.GetString(reader.GetOrdinal("PassengerName")),
+                        PassengerPhone = reader.GetString(reader.GetOrdinal("PassengerPhone")),
+                        PassengerNID = reader.IsDBNull(reader.GetOrdinal("PassengerNID"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("PassengerNID")),
+                        Fare = reader.GetDecimal(reader.GetOrdinal("Fare"))
+                    });
+                }
+            }
 
-                CustomerId = reader.GetInt64(
-                    reader.GetOrdinal("CustomerId")),
-
-                TotalAmount = reader.GetDecimal(
-                    reader.GetOrdinal("TotalAmount")),
-
-                BookingStatus = reader.GetByte(
-                    reader.GetOrdinal("BookingStatus")),
-
-                CreatedAt = reader.GetDateTime(
-                    reader.GetOrdinal("CreatedAt")),
-
-                ConfirmedAt =
-                    reader.IsDBNull(
-                        reader.GetOrdinal("ConfirmedAt"))
-                        ? null
-                        : reader.GetDateTime(
-                            reader.GetOrdinal("ConfirmedAt"))
+            return new ConfirmBookingResult
+            {
+                Booking = booking,
+                Passengers = passengers
             };
         }
+
+
+        // ============================================================
+        // RELEASE EXPIRED SEAT LOCKS
+        // ============================================================
 
         public async Task<int> ReleaseExpiredSeatLocksAsync()
         {
@@ -208,3 +204,4 @@ namespace BPS.Infrastructure.Repositories
         }
     }
 }
+

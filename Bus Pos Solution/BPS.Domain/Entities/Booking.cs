@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BPS.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +19,13 @@ namespace BPS.Domain.Entities
 
         public decimal TotalAmount { get; set; }
 
-        public byte BookingStatus { get; set; }
+        public BookingStatus BookingStatus { get; set; }
+
+        public PaymentStatus PaymentStatus { get; set; }
+
+        public string PaymentMethod { get; set; } = string.Empty;
+
+        public string? TransactionId { get; set; }
 
         public DateTime CreatedAt { get; set; }
 

@@ -1,4 +1,5 @@
 ﻿using BPS.Application.DTOs.Trips;
+using BPS.Application.DTOs.TripSearch;
 
 namespace BPS.Application.Interfaces
 {
@@ -16,5 +17,6 @@ namespace BPS.Application.Interfaces
 
         Task<bool> DeleteAsync(
             long id);
+        
     }
 }

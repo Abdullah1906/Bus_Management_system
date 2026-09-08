@@ -1,5 +1,7 @@
 ﻿using BPS.Application.DTOs.TripSchedules;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
+using BPS.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -91,6 +93,24 @@ namespace BPS.API.Controllers
 
             if (!result)
                 return NotFound();
+
+            return Ok(result);
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> Search(
+        [FromQuery] string fromPlace,
+        [FromQuery] string toPlace,
+        [FromQuery] DateTime tripDate)
+        {
+            var request = new TripSearchDto
+            {
+                FromPlace = fromPlace,
+                ToPlace = toPlace,
+                TripDate = tripDate
+            };
+
+            var result = await _service.SearchAsync(request);
 
             return Ok(result);
         }

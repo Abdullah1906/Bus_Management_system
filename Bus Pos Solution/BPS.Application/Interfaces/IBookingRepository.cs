@@ -1,4 +1,5 @@
-﻿using BPS.Domain.Entities;
+﻿using BPS.Application.DTOs.Bookings;
+using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,12 +14,12 @@ namespace BPS.Application.Interfaces
             long tripId,
             IEnumerable<long> tripSeatIds,
             long customerId);
-        Task<Booking?> ConfirmBookingAsync(
-           long tripId,
-           long customerId,
-           string paymentMethod,
-           string? transactionId,
-           string passengersJson);
+        Task<ConfirmBookingResult?> ConfirmBookingAsync(
+            long tripId,
+            long customerId,
+            string paymentMethod,
+            string? transactionId,
+            string passengersJson);
 
         Task<int> ReleaseExpiredSeatLocksAsync();
     }

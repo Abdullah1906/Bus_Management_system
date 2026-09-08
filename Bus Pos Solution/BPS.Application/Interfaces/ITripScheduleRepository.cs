@@ -1,4 +1,5 @@
 ﻿using BPS.Application.DTOs.TripSchedules;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -29,5 +30,9 @@ namespace BPS.Application.Interfaces
             long id,
             bool isActive,
             CancellationToken cancellationToken = default);
+        Task<IEnumerable<TripSearchResponseDto>> SearchAsync(
+          string fromPlace,
+          string toPlace,
+          DateTime tripDate);
     }
 }
