@@ -212,5 +212,13 @@ namespace BPS.Application.Services
                 request.ToPlace.Trim(),
                 request.TripDate.Date);
         }
+
+        public async Task<IEnumerable<TripSeatDto>> GetSeatsAsync(long tripId)
+        {
+            if (tripId <= 0)
+                throw new ArgumentException("Invalid trip ID.");
+
+            return await _repository.GetSeatsAsync(tripId);
+        }
     }
 }

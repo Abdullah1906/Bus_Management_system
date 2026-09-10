@@ -28,5 +28,6 @@ namespace BPS.Application.Interfaces
             long id,
             bool isActive);
         Task<IEnumerable<TripSearchResponseDto>> SearchAsync(TripSearchDto request);
+        Task<IEnumerable<TripSeatDto>> GetSeatsAsync(long tripId);
     }
 }

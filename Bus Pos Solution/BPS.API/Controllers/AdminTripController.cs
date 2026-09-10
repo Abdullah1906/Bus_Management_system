@@ -114,5 +114,14 @@ namespace BPS.API.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("{tripId:long}/seats")]
+        
+        public async Task<IActionResult> GetSeats(long tripId)
+        {
+            var result = await _service.GetSeatsAsync(tripId);
+
+            return Ok(result);
+        }
     }
 }

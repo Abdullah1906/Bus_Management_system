@@ -34,5 +34,6 @@ namespace BPS.Application.Interfaces
           string fromPlace,
           string toPlace,
           DateTime tripDate);
+        Task<IEnumerable<TripSeatDto>> GetSeatsAsync(long tripId);
     }
 }

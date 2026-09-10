@@ -2570,3 +2570,61 @@ BEGIN
         t.DepartureTime;
 END;
 GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_Trip_GetSeats
+    @TripId BIGINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Validate trip
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM Trips
+        WHERE Id = @TripId
+          AND IsActive = 1
+    )
+    BEGIN
+        THROW 50001, 'Trip not found or inactive.', 1;
+    END;
+
+    -- Release expired locks
+    UPDATE TripSeats
+    SET
+        Status = 1,
+        LockedByCustomerId = NULL,
+        LockedUntil = NULL
+    WHERE TripId = @TripId
+      AND Status = 2
+      AND LockedUntil IS NOT NULL
+      AND LockedUntil <= GETUTCDATE();
+
+    SELECT
+        ts.Id AS TripSeatId,
+        ts.BusSeatId,
+        bs.SeatNumber,
+        bs.RowNumber,
+        bs.ColumnNumber,
+        bs.IsWindow,
+        ts.Status
+
+    FROM TripSeats ts
+
+    INNER JOIN BusSeats bs
+        ON bs.Id = ts.BusSeatId
+
+    WHERE
+        ts.TripId = @TripId
+        AND bs.IsActive = 1
+
+    ORDER BY
+        bs.RowNumber,
+        bs.ColumnNumber;
+END;
+GO

@@ -522,5 +522,57 @@ namespace BPS.Infrastructure.Repositories
 
             return trips;
         }
+
+        public async Task<IEnumerable<TripSeatDto>> GetSeatsAsync(long tripId)
+        {
+            var seats = new List<TripSeatDto>();
+
+            using var connection = _connectionFactory.CreateConnection();
+
+            using var command = new SqlCommand(
+                "SP_Trip_GetSeats",
+                connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            command.Parameters.Add(
+                "@TripId",
+                SqlDbType.BigInt
+            ).Value = tripId;
+
+            await connection.OpenAsync();
+
+            using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                seats.Add(new TripSeatDto
+                {
+                    TripSeatId = reader.GetInt64(
+                        reader.GetOrdinal("TripSeatId")),
+
+                    BusSeatId = reader.GetInt64(
+                        reader.GetOrdinal("BusSeatId")),
+
+                    SeatNumber = reader.GetString(
+                        reader.GetOrdinal("SeatNumber")),
+
+                    RowNumber = reader.GetInt32(
+                        reader.GetOrdinal("RowNumber")),
+
+                    ColumnNumber = reader.GetInt32(
+                        reader.GetOrdinal("ColumnNumber")),
+
+                    IsWindow = reader.GetBoolean(
+                        reader.GetOrdinal("IsWindow")),
+
+                    Status = reader.GetByte(
+                        reader.GetOrdinal("Status"))
+                });
+            }
+
+            return seats;
+        }
     }
 }
