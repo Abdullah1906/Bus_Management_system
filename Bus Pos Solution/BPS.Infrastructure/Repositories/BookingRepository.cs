@@ -131,7 +131,7 @@ namespace BPS.Infrastructure.Repositories
 
             var booking = new Booking
             {
-                // Safe Conversion ব্যবহার করা হয়েছে যাতে Cast Error না আসে
+                // Safe Conversion
                 Id = Convert.ToInt64(reader["BookingId"]),
                 PNR = reader.GetString(reader.GetOrdinal("PNR")),
                 TripId = Convert.ToInt64(reader["TripId"]),
