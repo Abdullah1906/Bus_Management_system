@@ -1036,9 +1036,15 @@ BEGIN
             pay.PaymentMethod,
             pay.TransactionId,
             b.CreatedAt,
-            b.ConfirmedAt
+            b.ConfirmedAt,
+			r.FromPlace AS FromPlaceName,
+            r.ToPlace AS ToPlaceName,
+            t.TripDate
         FROM Bookings b
         INNER JOIN Payments pay ON pay.BookingId = b.Id
+		INNER JOIN Trips t ON t.Id = b.TripId
+		INNER JOIN Routes r ON r.Id = t.RouteId
+
         WHERE b.Id = @BookingId;
 
         ---------------------------------------------------------
@@ -1063,6 +1069,8 @@ BEGIN
         THROW;
     END CATCH
 END;
+
+
 
 SET ANSI_NULLS ON
 GO
@@ -2397,7 +2405,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE dbo.SP_TripSchedule_Update
+ALTER PROCEDURE [dbo].[SP_TripSchedule_Update]
     @Id BIGINT,
     @BusId INT,
     @RouteId INT,
@@ -2409,7 +2417,17 @@ CREATE PROCEDURE dbo.SP_TripSchedule_Update
 AS
 BEGIN
     SET NOCOUNT ON;
-
+	IF EXISTS (SELECT 1 FROM TripSeats WHERE TripId = @Id)
+	   AND (
+			@BusId <> (SELECT BusId FROM Trips WHERE Id = @Id)
+			OR @TripDate <> (SELECT TripDate FROM Trips WHERE Id = @Id)
+			OR @DepartureTime <> (SELECT DepartureTime FROM Trips WHERE Id = @Id)
+	   )
+	BEGIN
+		THROW 50006,
+			'Cannot change bus, trip date or departure time after seats are generated. Create a new trip instead.',
+			1;
+	END;
     UPDATE dbo.Trips
     SET
         BusId = @BusId,
@@ -2501,7 +2519,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE SP_Trip_Search
+ALTER PROCEDURE [dbo].[SP_Trip_Search]
     @FromPlace NVARCHAR(150),
     @ToPlace NVARCHAR(150),
     @TripDate DATE
@@ -2551,6 +2569,13 @@ BEGIN
         AND t.TripDate = @TripDate
         AND r.FromPlace = @FromPlace
         AND r.ToPlace = @ToPlace
+		AND (
+			 t.TripDate > CAST(GETUTCDATE() AS DATE)
+			 OR (
+				  t.TripDate = CAST(GETUTCDATE() AS DATE)
+				  AND t.DepartureTime > CAST(GETUTCDATE() AS TIME)
+			 )
+		)
 
     GROUP BY
         t.Id,
@@ -2569,7 +2594,6 @@ BEGIN
     ORDER BY
         t.DepartureTime;
 END;
-GO
 
 SET ANSI_NULLS ON
 GO

@@ -146,7 +146,11 @@ namespace BPS.Infrastructure.Repositories
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
                 ConfirmedAt = reader.IsDBNull(reader.GetOrdinal("ConfirmedAt"))
                     ? null
-                    : reader.GetDateTime(reader.GetOrdinal("ConfirmedAt"))
+                    : reader.GetDateTime(reader.GetOrdinal("ConfirmedAt")),
+
+                FromPlaceName = reader.GetString(reader.GetOrdinal("FromPlaceName")),
+                ToPlaceName = reader.GetString(reader.GetOrdinal("ToPlaceName")),
+                TripDate = reader.GetDateTime(reader.GetOrdinal("TripDate"))
             };
 
             // RESULT SET 2: Passenger + Seat + Fare information

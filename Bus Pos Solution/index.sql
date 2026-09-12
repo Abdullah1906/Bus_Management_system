@@ -29,3 +29,6 @@ GO
 CREATE INDEX IX_Payments_BookingId
 ON Payments(BookingId);
 GO
+
+CREATE UNIQUE INDEX UX_Trips_Bus_Date_Time
+ON Trips(BusId, RouteId, TripDate, DepartureTime);

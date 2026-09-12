@@ -313,7 +313,10 @@ namespace BPS.Application.Services
                     booking.ConfirmedAt,
 
                 Passengers =
-                    result.Passengers
+                    result.Passengers,
+                FromPlaceName = booking.FromPlaceName,
+                ToPlaceName = booking.ToPlaceName,
+                TripDate = booking.TripDate,
             };
         }
     }

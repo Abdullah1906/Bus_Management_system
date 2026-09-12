@@ -30,5 +30,9 @@ namespace BPS.Domain.Entities
         public DateTime CreatedAt { get; set; }
 
         public DateTime? ConfirmedAt { get; set; }
+
+        public string FromPlaceName { get; set; } = string.Empty;
+        public string ToPlaceName { get; set; } = string.Empty;
+        public DateTime TripDate { get; set; }
     }
 }
