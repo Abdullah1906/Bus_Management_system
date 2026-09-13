@@ -241,6 +241,7 @@ CREATE TABLE Trips
 
     IsActive BIT NOT NULL
         CONSTRAINT DF_Trips_IsActive DEFAULT 1,
+    IsDeleted BIT NOT NULL DEFAULT 0,
 
     CreatedAt DATETIME2 NOT NULL
         CONSTRAINT DF_Trips_CreatedAt

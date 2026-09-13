@@ -484,7 +484,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[SP_CreateTripSchedule]
+ALTER PROCEDURE [dbo].[SP_CreateTripSchedule]
     @BusId INT,
     @RouteId INT,
     @TripDate DATE,
@@ -561,27 +561,56 @@ BEGIN
                 'Bus does not have any active seats.',
                 1;
         END;
-
-
+		------------------------------------------------
+        -- 5. Check Bus Schedule Conflict (With 2 Hours Buffer)
         ------------------------------------------------
-        -- 5. Prevent duplicate trip
-        ------------------------------------------------
+        DECLARE @BaseDate DATETIME2 = CAST(@TripDate AS DATETIME2);
+        DECLARE @NewStart DATETIME2 = DATEADD(second, DATEDIFF(second, '00:00:00', @DepartureTime), @BaseDate);
+        DECLARE @NewEnd DATETIME2;
+
+        IF @ArrivalTime IS NOT NULL
+        BEGIN
+            -- Handle overnight arrival (e.g. 22:00 to 04:30 next day)
+            IF @ArrivalTime < @DepartureTime
+            BEGIN
+                SET @NewEnd = DATEADD(second, DATEDIFF(second, '00:00:00', @ArrivalTime), DATEADD(DAY, 1, @BaseDate));
+            END
+            ELSE
+            BEGIN
+                SET @NewEnd = DATEADD(second, DATEDIFF(second, '00:00:00', @ArrivalTime), @BaseDate);
+            END
+        END
+        ELSE
+        BEGIN
+            -- Default 6 hours duration if ArrivalTime is NULL
+            SET @NewEnd = DATEADD(HOUR, 6, @NewStart);
+        END
+
         IF EXISTS
         (
             SELECT 1
-            FROM Trips
-            WHERE BusId = @BusId
-              AND RouteId = @RouteId
-              AND TripDate = @TripDate
-              AND DepartureTime = @DepartureTime
-              AND IsActive = 1
+            FROM Trips t
+            CROSS APPLY (
+                SELECT 
+                    DATEADD(second, DATEDIFF(second, '00:00:00', t.DepartureTime), CAST(t.TripDate AS DATETIME2)) AS ExistingStart,
+                    CASE 
+                        WHEN t.ArrivalTime IS NULL 
+                            THEN DATEADD(HOUR, 6, DATEADD(second, DATEDIFF(second, '00:00:00', t.DepartureTime), CAST(t.TripDate AS DATETIME2)))
+                        WHEN t.ArrivalTime < t.DepartureTime 
+                            THEN DATEADD(second, DATEDIFF(second, '00:00:00', t.ArrivalTime), DATEADD(DAY, 1, CAST(t.TripDate AS DATETIME2)))
+                        ELSE DATEADD(second, DATEDIFF(second, '00:00:00', t.ArrivalTime), CAST(t.TripDate AS DATETIME2))
+                    END AS ExistingEnd
+            ) calc
+            WHERE t.BusId = @BusId
+              AND t.IsActive = 1
+              AND ISNULL(t.IsDeleted, 0) = 0
+              -- Overlap check logic with 2 Hours Rest Buffer
+              AND (@NewStart < DATEADD(HOUR, 2, calc.ExistingEnd))
+              AND (@NewEnd > DATEADD(HOUR, -2, calc.ExistingStart))
         )
         BEGIN
-            THROW 50005,
-                'A trip with the same bus, route, date and departure time already exists.',
-                1;
+            THROW 50005, 'Selected bus is already scheduled or requires a 2-hour rest buffer between trips.', 1;
         END;
-
 
         ------------------------------------------------
         -- 6. Create Trip
@@ -2324,11 +2353,11 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_GetAll
+ALTER PROCEDURE [dbo].[SP_TripSchedule_GetAll]
 AS
 BEGIN
     SET NOCOUNT ON;
-
+	DECLARE @TodayDate DATE = CAST(GETUTCDATE() AS DATE);
     SELECT
         t.Id,
         t.BusId,
@@ -2355,7 +2384,7 @@ BEGIN
 
     INNER JOIN dbo.Routes r
         ON r.Id = t.RouteId
-
+	WHERE ISNULL(t.IsDeleted, 0) = 0 AND CAST(t.TripDate AS DATE) >= @TodayDate
     ORDER BY
         t.TripDate ASC,
         t.DepartureTime ASC,
@@ -2369,7 +2398,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE dbo.SP_TripSchedule_GetById
+ALTER PROCEDURE [dbo].[SP_TripSchedule_GetById]
     @Id BIGINT
 AS
 BEGIN
@@ -2395,7 +2424,7 @@ BEGIN
         ON b.Id = t.BusId
     INNER JOIN dbo.Routes r
         ON r.Id = t.RouteId
-    WHERE t.Id = @Id;
+    WHERE t.Id = @Id AND ISNULL(t.IsDeleted, 0) = 0;
 END;
 GO
 
@@ -2437,8 +2466,8 @@ BEGIN
         ArrivalTime = @ArrivalTime,
         Fare = @Fare,
         IsActive = @IsActive,
-        UpdatedAt = GETDATE()
-    WHERE Id = @Id;
+        UpdatedAt = GETUTCDATE()
+    WHERE Id = @Id AND ISNULL(IsDeleted, 0) = 0;
 
     IF @@ROWCOUNT = 0
     BEGIN
@@ -2455,7 +2484,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_Delete
+ALTER PROCEDURE [dbo].[SP_TripSchedule_Delete]
     @Id BIGINT
 AS
 BEGIN
@@ -2464,16 +2493,15 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM dbo.Bookings
-        WHERE TripId = @Id
+        WHERE TripId = @Id and CreatedAt >= GETUTCDATE()
     )
     BEGIN
         THROW 50001, 'Trip cannot be deleted because booking exists.', 1;
     END;
 
-    DELETE FROM dbo.TripSeats
-    WHERE TripId = @Id;
-
-    DELETE FROM dbo.Trips
+    UPDATE dbo.Trips
+    SET IsDeleted = 1,
+        IsActive = 0
     WHERE Id = @Id;
 
     SELECT
@@ -2491,7 +2519,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE dbo.SP_TripSchedule_ChangeStatus
+ALTER PROCEDURE [dbo].[SP_TripSchedule_ChangeStatus]
     @Id BIGINT,
     @IsActive BIT
 AS
@@ -2501,8 +2529,8 @@ BEGIN
     UPDATE dbo.Trips
     SET
         IsActive = @IsActive,
-        UpdatedAt = GETDATE()
-    WHERE Id = @Id;
+        UpdatedAt = GETUTCDATE()
+    WHERE Id = @Id AND ISNULL(IsDeleted, 0) = 0;
 
     SELECT CAST(
         CASE

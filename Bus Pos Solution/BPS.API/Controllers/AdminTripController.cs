@@ -2,6 +2,7 @@
 using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
 using BPS.Application.Services;
+using BPS.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,10 +26,19 @@ namespace BPS.API.Controllers
         public async Task<IActionResult> Create(
             [FromBody] CreateTripScheduleDto dto)
         {
-            var result =
-                await _service.CreateAsync(dto);
-
-            return Ok(result);
+            try
+            {
+                var result = await _service.CreateAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return ex switch
+                {
+                    BusinessRuleException or ArgumentException => BadRequest(new { message = ex.Message }),
+                    _ => StatusCode(500, new { message = "An internal server error occurred.", detail = ex.Message })
+                };
+            }
         }
 
         [HttpGet]

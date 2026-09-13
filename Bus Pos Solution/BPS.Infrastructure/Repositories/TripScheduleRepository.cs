@@ -2,6 +2,7 @@
 using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
+using BPS.Domain.Exceptions;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
 using System;
@@ -27,110 +28,119 @@ namespace BPS.Infrastructure.Repositories
         public async Task<Trip?> CreateScheduleAsync(
             Trip trip)
         {
-            await using var connection =
+            try
+            {
+                await using var connection =
                 _connectionFactory.CreateConnection();
 
-            await using var command =
-                new SqlCommand(
-                    "SP_CreateTripSchedule",
-                    connection);
+                await using var command =
+                    new SqlCommand(
+                        "SP_CreateTripSchedule",
+                        connection);
 
-            command.CommandType =
-                CommandType.StoredProcedure;
+                command.CommandType =
+                    CommandType.StoredProcedure;
 
-            command.Parameters.Add(
-                "@BusId",
-                SqlDbType.Int)
-                .Value = trip.BusId;
-
-            command.Parameters.Add(
-                "@RouteId",
-                SqlDbType.Int)
-                .Value = trip.RouteId;
-
-            command.Parameters.Add(
-                "@TripDate",
-                SqlDbType.Date)
-                .Value = trip.TripDate.Date;
-
-            command.Parameters.Add(
-                "@DepartureTime",
-                SqlDbType.Time)
-                .Value = trip.DepartureTime;
-
-            command.Parameters.Add(
-                "@ArrivalTime",
-                SqlDbType.Time)
-                .Value =
-                    trip.ArrivalTime.HasValue
-                        ? trip.ArrivalTime.Value
-                        : DBNull.Value;
-
-            var fareParameter =
                 command.Parameters.Add(
-                    "@Fare",
-                    SqlDbType.Decimal);
+                    "@BusId",
+                    SqlDbType.Int)
+                    .Value = trip.BusId;
 
-            fareParameter.Precision = 18;
-            fareParameter.Scale = 2;
-            fareParameter.Value = trip.Fare;
+                command.Parameters.Add(
+                    "@RouteId",
+                    SqlDbType.Int)
+                    .Value = trip.RouteId;
 
-            command.Parameters.Add(
-                "@CreatedBy",
-                SqlDbType.NVarChar,
-                100)
-                .Value =
-                    (object?)trip.CreatedBy
-                    ?? DBNull.Value;
+                command.Parameters.Add(
+                    "@TripDate",
+                    SqlDbType.Date)
+                    .Value = trip.TripDate.Date;
 
-            await connection.OpenAsync();
+                command.Parameters.Add(
+                    "@DepartureTime",
+                    SqlDbType.Time)
+                    .Value = trip.DepartureTime;
 
-            await using var reader =
-                await command.ExecuteReaderAsync();
+                command.Parameters.Add(
+                    "@ArrivalTime",
+                    SqlDbType.Time)
+                    .Value =
+                        trip.ArrivalTime.HasValue
+                            ? trip.ArrivalTime.Value
+                            : DBNull.Value;
 
-            if (!await reader.ReadAsync())
-                return null;
+                var fareParameter =
+                    command.Parameters.Add(
+                        "@Fare",
+                        SqlDbType.Decimal);
 
-            return new Trip
-            {
-                Id = reader.GetInt64(
-                    reader.GetOrdinal("Id")),
+                fareParameter.Precision = 18;
+                fareParameter.Scale = 2;
+                fareParameter.Value = trip.Fare;
 
-                BusId = reader.GetInt32(
-                    reader.GetOrdinal("BusId")),
+                command.Parameters.Add(
+                    "@CreatedBy",
+                    SqlDbType.NVarChar,
+                    100)
+                    .Value =
+                        (object?)trip.CreatedBy
+                        ?? DBNull.Value;
 
-                RouteId = reader.GetInt32(
-                    reader.GetOrdinal("RouteId")),
+                await connection.OpenAsync();
 
-                TripDate = reader.GetDateTime(
-                    reader.GetOrdinal("TripDate")),
+                await using var reader =
+                    await command.ExecuteReaderAsync();
 
-                DepartureTime = reader.GetTimeSpan(
-                    reader.GetOrdinal("DepartureTime")),
+                if (!await reader.ReadAsync())
+                    return null;
 
-                ArrivalTime =
-                    reader.IsDBNull(
-                        reader.GetOrdinal("ArrivalTime"))
-                        ? null
-                        : reader.GetTimeSpan(
-                            reader.GetOrdinal("ArrivalTime")),
+                return new Trip
+                {
+                    Id = reader.GetInt64(
+                        reader.GetOrdinal("Id")),
 
-                Fare = reader.GetDecimal(
-                    reader.GetOrdinal("Fare")),
+                    BusId = reader.GetInt32(
+                        reader.GetOrdinal("BusId")),
 
-                IsActive = reader.GetBoolean(
-                    reader.GetOrdinal("IsActive")),
+                    RouteId = reader.GetInt32(
+                        reader.GetOrdinal("RouteId")),
 
-                CreatedAt = reader.GetDateTime(
-                    reader.GetOrdinal("CreatedAt")),
+                    TripDate = reader.GetDateTime(
+                        reader.GetOrdinal("TripDate")),
 
-                CreatedBy =
-                    reader.IsDBNull(
-                        reader.GetOrdinal("CreatedBy"))
-                        ? null
-                        : reader.GetString(
+                    DepartureTime = reader.GetTimeSpan(
+                        reader.GetOrdinal("DepartureTime")),
+
+                    ArrivalTime =
+                        reader.IsDBNull(
+                            reader.GetOrdinal("ArrivalTime"))
+                            ? null
+                            : reader.GetTimeSpan(
+                                reader.GetOrdinal("ArrivalTime")),
+
+                    Fare = reader.GetDecimal(
+                        reader.GetOrdinal("Fare")),
+
+                    IsActive = reader.GetBoolean(
+                        reader.GetOrdinal("IsActive")),
+
+                    CreatedAt = reader.GetDateTime(
+                        reader.GetOrdinal("CreatedAt")),
+
+                    CreatedBy =
+                        reader.IsDBNull(
                             reader.GetOrdinal("CreatedBy"))
-            };
+                            ? null
+                            : reader.GetString(
+                                reader.GetOrdinal("CreatedBy"))
+                };
+
+            }
+            catch (SqlException ex) when (ex.Number >= 50001 && ex.Number <= 50005)
+            {
+                throw new BusinessRuleException(ex.Message);
+            }
+
         }
 
 
