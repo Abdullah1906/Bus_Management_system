@@ -2680,3 +2680,136 @@ BEGIN
         bs.ColumnNumber;
 END;
 GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_Trip_CreateMultiple]
+(
+    @PlaceIds dbo.PlaceIdTable READONLY,
+    @TripDate DATE,
+    @TipStatus BIT,
+    @TipAmount DECIMAL(18,2),
+    @CreatedBy NVARCHAR(100) = NULL
+)
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+
+        BEGIN TRANSACTION;
+
+        -- Validate Place IDs
+        IF EXISTS
+        (
+            SELECT 1
+            FROM @PlaceIds ids
+            LEFT JOIN Places p
+                ON p.Id = ids.PlaceId
+               AND p.IsActive = 1
+            WHERE p.Id IS NULL
+        )
+        BEGIN
+            THROW 50001,
+                'One or more places were not found or inactive.',
+                1;
+        END;
+
+
+        -- Tip OFF
+        IF @TipStatus = 0
+        BEGIN
+            SET @TipAmount = 0;
+        END;
+
+
+        -- Tip validation
+        IF @TipAmount < 0
+        BEGIN
+            THROW 50002,
+                'Tip amount cannot be negative.',
+                1;
+        END;
+
+
+        INSERT INTO TripRecords
+        (
+            PlaceId,
+            TripDate,
+            TipStatus,
+            TipAmount,
+            Price,
+            CreatedAt,
+            CreatedBy,
+            UpdatedAt,
+            UpdatedBy,
+            IsActive
+        )
+        SELECT
+            p.Id,
+            @TripDate,
+            @TipStatus,
+            @TipAmount,
+            p.PricePerTrip,
+            GETUTCDATE(),
+            @CreatedBy,
+            NULL,
+            NULL,
+            1
+        FROM @PlaceIds ids
+        INNER JOIN Places p
+            ON p.Id = ids.PlaceId
+        WHERE p.IsActive = 1;
+
+
+        -- Return created records
+        SELECT
+            tr.Id,
+            tr.PlaceId,
+            p.PlaceName,
+            tr.TripDate,
+            tr.TipStatus,
+            tr.TipAmount,
+            tr.Price,
+            tr.Total,
+            tr.CreatedAt,
+            tr.CreatedBy,
+            tr.UpdatedAt,
+            tr.UpdatedBy,
+            tr.IsActive
+
+        FROM TripRecords tr
+
+        INNER JOIN Places p
+            ON tr.PlaceId = p.Id
+
+        INNER JOIN @PlaceIds ids
+            ON ids.PlaceId = tr.PlaceId
+
+        WHERE tr.TripDate = @TripDate
+          AND tr.CreatedBy = @CreatedBy
+
+        ORDER BY tr.Id;
+
+
+        COMMIT TRANSACTION;
+
+    END TRY
+
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+
+    END CATCH
+
+END;
+GO

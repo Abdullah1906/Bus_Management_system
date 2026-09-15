@@ -23,16 +23,18 @@ namespace BPS.Application.Services
         }
 
 
-        public async Task<TripDto> CreateAsync(
-            CreateTripDto dto)
+        public async Task<List<TripDto>> CreateAsync(CreateTripDto dto)
         {
             if (dto == null)
-                throw new ArgumentNullException(
-                    nameof(dto));
+                throw new ArgumentNullException(nameof(dto));
 
-            if (dto.PlaceId <= 0)
+            if (dto.PlaceIds == null || dto.PlaceIds.Count == 0)
                 throw new ArgumentException(
-                    "Place is required.");
+                    "At least one place is required.");
+
+            if (dto.PlaceIds.Any(x => x <= 0))
+                throw new ArgumentException(
+                    "Invalid place selected.");
 
             if (dto.TripDate == default)
                 throw new ArgumentException(
@@ -47,10 +49,16 @@ namespace BPS.Application.Services
             {
                 dto.TipAmount = 0;
             }
-            var email = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value;
-            var trip = new TripRecord
+
+            var email =
+                _httpContextAccessor.HttpContext?
+                    .User?
+                    .FindFirst(ClaimTypes.Email)?
+                    .Value;
+
+            var trip = new MutipleTripRecord
             {
-                PlaceId = dto.PlaceId,
+                PlaceIds = dto.PlaceIds,
 
                 TripDate = dto.TripDate.Date,
 
@@ -60,17 +68,17 @@ namespace BPS.Application.Services
                 CreatedBy = email
             };
 
-            var result =
-                await _tripRepository
-                    .CreateAsync(trip);
+            var result = await _tripRepository.CreateMultipleAsync(trip);
 
-            if (result == null)
+            if (result == null || result.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "Trip could not be created.");
+                    "Trips could not be created.");
             }
 
-            return MapToDto(result);
+            return result
+                .Select(MapToDto)
+                .ToList();
         }
 
 

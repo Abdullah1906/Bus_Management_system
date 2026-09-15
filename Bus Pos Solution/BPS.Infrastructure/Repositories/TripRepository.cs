@@ -18,60 +18,100 @@ namespace BPS.Infrastructure.Repositories
             _connectionFactory = connectionFactory;
         }
 
-        public async Task<TripRecord?> CreateAsync(
-            TripRecord trip)
+        private static DataTable CreatePlaceIdTable( List<int> placeIds)
+        {
+            var table = new DataTable();
+
+            table.Columns.Add(
+                "PlaceId",
+                typeof(int));
+
+            foreach (var placeId in placeIds)
+            {
+                table.Rows.Add(placeId);
+            }
+
+            return table;
+        }
+
+        public async Task<List<TripRecord>> CreateMultipleAsync(MutipleTripRecord trip)
         {
             await using var connection =
                 _connectionFactory.CreateConnection();
 
             await using var command =
                 new SqlCommand(
-                    "SP_Trip_Create",
+                    "SP_Trip_CreateMultiple",
                     connection);
 
             command.CommandType =
                 CommandType.StoredProcedure;
 
-            command.Parameters.Add(
-                "@PlaceId",
-                SqlDbType.Int)
-                .Value = trip.PlaceId;
+
+            // TVP
+            var placeTable =
+                CreatePlaceIdTable(trip.PlaceIds);
+
+            var placeParameter =
+                command.Parameters.AddWithValue(
+                    "@PlaceIds",
+                    placeTable);
+
+            placeParameter.SqlDbType =
+                SqlDbType.Structured;
+
+            placeParameter.TypeName =
+                "dbo.PlaceIdTable";
+
 
             command.Parameters.Add(
                 "@TripDate",
                 SqlDbType.Date)
                 .Value = trip.TripDate.Date;
 
+
             command.Parameters.Add(
                 "@TipStatus",
                 SqlDbType.Bit)
                 .Value = trip.TipStatus;
 
+
             var tipParameter =
                 command.Parameters.Add(
                     "@TipAmount",
                     SqlDbType.Decimal);
-        
 
             tipParameter.Precision = 18;
             tipParameter.Scale = 2;
             tipParameter.Value = trip.TipAmount;
 
+
             command.Parameters.Add(
                 "@CreatedBy",
                 SqlDbType.NVarChar,
                 100)
-                .Value = (object?)trip.CreatedBy ?? DBNull.Value;
+                .Value =
+                    (object?)trip.CreatedBy ??
+                    DBNull.Value;
+
 
             await connection.OpenAsync();
+
+
+            var trips = new List<TripRecord>();
+
 
             await using var reader =
                 await command.ExecuteReaderAsync();
 
-            if (!await reader.ReadAsync())
-                return null;
 
-            return MapTrip(reader);
+            while (await reader.ReadAsync())
+            {
+                trips.Add(MapTrip(reader));
+            }
+
+
+            return trips;
         }
 
         public async Task<TripRecord?> UpdateAsync(TripRecord trip)

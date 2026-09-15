@@ -5,8 +5,7 @@ namespace BPS.Application.Interfaces
 {
     public interface ITripService
     {
-        Task<TripDto> CreateAsync(
-            CreateTripDto dto);
+        Task<List<TripDto>> CreateAsync(CreateTripDto dto);
 
         Task<TripDto?> GetByIdAsync(
             long id);

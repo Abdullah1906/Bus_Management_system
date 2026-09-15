@@ -424,3 +424,11 @@ CREATE TABLE Payments
         CHECK (PaymentStatus IN (1,2,3))
 );
 GO
+
+ --use for [dbo].[SP_Trip_CreateMultiple] 
+
+CREATE TYPE dbo.PlaceIdTable AS TABLE
+(
+    PlaceId INT NOT NULL
+);
+GO

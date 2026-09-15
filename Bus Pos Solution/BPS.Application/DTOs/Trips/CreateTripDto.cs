@@ -8,7 +8,7 @@ namespace BPS.Application.DTOs.Trips
 {
     public class CreateTripDto
     {
-        public int PlaceId { get; set; }
+        public List<int> PlaceIds { get; set; } = new();
 
         public DateTime TripDate { get; set; }
 

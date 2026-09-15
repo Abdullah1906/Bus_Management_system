@@ -10,8 +10,8 @@ namespace BPS.Application.Interfaces
 {
     public interface ITripRepository
     {
-        Task<TripRecord?> CreateAsync(
-            TripRecord trip);
+        Task<List<TripRecord>> CreateMultipleAsync(MutipleTripRecord trip);
+        
 
         Task<TripRecord?> GetByIdAsync(
             long id);
