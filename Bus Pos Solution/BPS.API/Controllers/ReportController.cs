@@ -35,5 +35,15 @@ namespace BPS.API.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("get-paged")]
+        public async Task<IActionResult> GetPaged([FromQuery] ReportFilterDto filter)
+        {
+            var result =
+                await _reportService
+                    .GetPagedAsync(filter);
+
+            return Ok(result);
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using BPS.Application.DTOs.Trips;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.Trips;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using Microsoft.AspNetCore.Http;
@@ -106,6 +107,46 @@ namespace BPS.Application.Services
                     .GetAllAsync();
 
             return trips.Select(MapToDto);
+        }
+
+        public async Task<PagedResult<TripDto>> GetPagedAsync(TripPagedRequestDto request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(
+                    nameof(request));
+
+            var page =
+                request.Page < 1
+                    ? 1
+                    : request.Page;
+
+            var pageSize =
+                request.PageSize < 1
+                    ? 10
+                    : request.PageSize;
+
+            // Maximum page size
+            if (pageSize > 100)
+                pageSize = 100;
+
+            var result =
+                await _tripRepository.GetPagedAsync(
+                    request.Search,
+                    page,
+                    pageSize);
+
+            return new PagedResult<TripDto>
+            {
+                Items = result.Items
+                    .Select(MapToDto)
+                    .ToList(),
+
+                Page = result.Page,
+
+                PageSize = result.PageSize,
+
+                TotalCount = result.TotalCount
+            };
         }
 
         // UPDATE

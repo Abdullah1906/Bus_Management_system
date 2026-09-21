@@ -63,7 +63,28 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-  ALTER   PROCEDURE [dbo].[SP_Place_GetAll]
+ALTER   PROCEDURE [dbo].[SP_Place_GetAll]
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        Id,
+        PlaceName,
+        PricePerTrip,
+        IsActive
+    FROM Places
+    ORDER BY PlaceName;
+END;
+
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Create or Alter PROCEDURE [dbo].[SP_Place_GetAll_Active]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2812,4 +2833,410 @@ BEGIN
     END CATCH
 
 END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_Trip_GetPaged]
+    @Search NVARCHAR(200) = NULL,
+    @Page INT = 1,
+    @PageSize INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- ============================
+    -- Validation
+    -- ============================
+
+    IF @Page < 1
+        SET @Page = 1;
+
+    IF @PageSize < 1
+        SET @PageSize = 10;
+
+    -- Prevent extremely large requests
+    IF @PageSize > 100
+        SET @PageSize = 100;
+
+
+    DECLARE @Offset INT;
+
+    SET @Offset =
+        (@Page - 1) * @PageSize;
+
+
+    -- ============================
+    -- Search normalization
+    -- ============================
+
+    SET @Search =
+        NULLIF(
+            LTRIM(RTRIM(@Search)),
+            ''
+        );
+
+
+    -- ============================
+    -- Result Set 1
+    -- ============================
+
+    SELECT
+        tr.Id,
+        tr.PlaceId,
+        p.PlaceName,
+        tr.TripDate,
+        tr.TipStatus,
+        tr.TipAmount,
+        tr.Price,
+        tr.Total,
+        tr.CreatedAt,
+        tr.UpdatedAt,
+        tr.CreatedBy,
+        tr.UpdatedBy,
+        tr.IsActive
+
+    FROM TripRecords tr
+
+    INNER JOIN Places p
+        ON tr.PlaceId = p.Id
+
+    WHERE
+        tr.IsActive = 1
+
+        AND
+        (
+            @Search IS NULL
+
+            OR
+
+            p.PlaceName LIKE @Search + '%'
+        )
+
+    ORDER BY
+        tr.TripDate DESC,
+        tr.Id DESC
+
+    OFFSET @Offset ROWS
+
+    FETCH NEXT @PageSize ROWS ONLY;
+
+
+    -- ============================
+    -- Result Set 2
+    -- Total Count
+    -- ============================
+
+    SELECT
+        COUNT_BIG(*) AS TotalCount
+
+    FROM TripRecords tr
+
+    INNER JOIN Places p
+        ON tr.PlaceId = p.Id
+
+    WHERE
+        tr.IsActive = 1
+
+        AND
+        (
+            @Search IS NULL
+
+            OR
+
+            p.PlaceName LIKE @Search + '%'
+        );
+
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_Report_GetPaged]
+(
+    @FromDate DATE = NULL,
+    @ToDate DATE = NULL,
+    @PlaceId INT = NULL,
+    @Period NVARCHAR(20) = NULL,
+    @Page INT = 1,
+    @PageSize INT = 10
+)
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+
+    /* =====================================================
+       VALIDATION
+    ===================================================== */
+
+    IF @Page < 1
+        SET @Page = 1;
+
+    IF @PageSize < 1
+        SET @PageSize = 10;
+
+    IF @PageSize > 100
+        SET @PageSize = 100;
+
+
+    /* =====================================================
+       DATE VARIABLES
+    ===================================================== */
+
+    DECLARE @StartDate DATE;
+    DECLARE @EndDate DATE;
+
+
+    /* =====================================================
+       DAY
+    ===================================================== */
+
+    IF LOWER(@Period) = 'day'
+    BEGIN
+
+        SET @StartDate =
+            ISNULL(
+                @FromDate,
+                CAST(GETDATE() AS DATE)
+            );
+
+        SET @EndDate = @StartDate;
+
+    END
+
+
+    /* =====================================================
+       WEEK
+    ===================================================== */
+
+    ELSE IF LOWER(@Period) = 'week'
+    BEGIN
+
+        SET @StartDate =
+            ISNULL(
+                @FromDate,
+                CAST(GETDATE() AS DATE)
+            );
+
+        -- Monday
+        SET @StartDate =
+            DATEADD(
+                DAY,
+                -(DATEDIFF(DAY, 0, @StartDate) % 7),
+                @StartDate
+            );
+
+        SET @EndDate =
+            DATEADD(
+                DAY,
+                6,
+                @StartDate
+            );
+
+    END
+
+
+    /* =====================================================
+       MONTH
+    ===================================================== */
+
+    ELSE IF LOWER(@Period) = 'month'
+    BEGIN
+
+        SET @StartDate =
+            DATEFROMPARTS(
+                YEAR(
+                    ISNULL(
+                        @FromDate,
+                        CAST(GETDATE() AS DATE)
+                    )
+                ),
+                MONTH(
+                    ISNULL(
+                        @FromDate,
+                        CAST(GETDATE() AS DATE)
+                    )
+                ),
+                1
+            );
+
+        SET @EndDate =
+            EOMONTH(@StartDate);
+
+    END
+
+
+    /* =====================================================
+       YEAR
+    ===================================================== */
+
+    ELSE IF LOWER(@Period) = 'year'
+    BEGIN
+
+        SET @StartDate =
+            DATEFROMPARTS(
+                YEAR(
+                    ISNULL(
+                        @FromDate,
+                        CAST(GETDATE() AS DATE)
+                    )
+                ),
+                1,
+                1
+            );
+
+        SET @EndDate =
+            DATEFROMPARTS(
+                YEAR(@StartDate),
+                12,
+                31
+            );
+
+    END
+
+
+    /* =====================================================
+       CUSTOM DATE
+    ===================================================== */
+
+    ELSE
+    BEGIN
+
+        SET @StartDate = @FromDate;
+
+        SET @EndDate = @ToDate;
+
+    END;
+
+
+    /* =====================================================
+       DEFAULT DATE RANGE
+    ===================================================== */
+
+    IF @StartDate IS NULL
+    BEGIN
+        SET @StartDate = '19000101';
+    END;
+
+
+    IF @EndDate IS NULL
+    BEGIN
+        SET @EndDate = CAST(GETDATE() AS DATE);
+    END;
+
+
+    /* =====================================================
+       VALIDATION
+    ===================================================== */
+
+    IF @StartDate > @EndDate
+    BEGIN
+
+        THROW 50010,
+            'From date cannot be greater than To date.',
+            1;
+
+    END;
+
+
+    /* =====================================================
+       PAGINATION OFFSET
+    ===================================================== */
+
+    DECLARE @Offset INT;
+
+    SET @Offset =
+        (@Page - 1) * @PageSize;
+
+
+    /* =====================================================
+       PAGINATED DATA
+    ===================================================== */
+
+    SELECT
+
+        tr.Id,
+
+        tr.TripDate AS ReportDate,
+
+        tr.PlaceId,
+
+        p.PlaceName,
+
+        tr.Price,
+
+        tr.TipAmount,
+
+        tr.Total,
+
+        tr.TipStatus
+
+    FROM TripRecords tr
+
+    INNER JOIN Places p
+        ON tr.PlaceId = p.Id
+
+    WHERE
+
+        tr.IsActive = 1
+
+        AND tr.TripDate >= @StartDate
+
+        AND tr.TripDate <= @EndDate
+
+        AND
+        (
+            @PlaceId IS NULL
+            OR tr.PlaceId = @PlaceId
+        )
+
+    ORDER BY
+
+        tr.TripDate DESC,
+
+        tr.Id DESC
+
+    OFFSET @Offset ROWS
+
+    FETCH NEXT @PageSize ROWS ONLY;
+
+
+    /* =====================================================
+       TOTAL COUNT
+    ===================================================== */
+
+    SELECT
+
+        COUNT_BIG(*) AS TotalCount
+
+    FROM TripRecords tr
+
+    INNER JOIN Places p
+        ON tr.PlaceId = p.Id
+
+    WHERE
+
+        tr.IsActive = 1
+
+        AND tr.TripDate >= @StartDate
+
+        AND tr.TripDate <= @EndDate
+
+        AND
+        (
+            @PlaceId IS NULL
+            OR tr.PlaceId = @PlaceId
+        );
+
+END
 GO

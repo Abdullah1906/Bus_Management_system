@@ -1,4 +1,5 @@
-﻿using BPS.Application.DTOs.Trips;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.Trips;
 using BPS.Application.DTOs.TripSearch;
 
 namespace BPS.Application.Interfaces
@@ -11,6 +12,9 @@ namespace BPS.Application.Interfaces
             long id);
 
         Task<IEnumerable<TripDto>> GetAllAsync();
+
+        Task<PagedResult<TripDto>> GetPagedAsync(
+        TripPagedRequestDto request);
 
         Task<TripDto?> UpdateAsync(long id,UpdateTripDto dto);
 

@@ -41,6 +41,16 @@ namespace BPS.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("getpaged")]
+        public async Task<IActionResult> GetPaged([FromQuery] TripPagedRequestDto request)
+        {
+            var result =
+                await _tripService
+                    .GetPagedAsync(request);
+
+            return Ok(result);
+        }
+
 
         [HttpGet("get/{id:int}")]
         public async Task<IActionResult> GetById(

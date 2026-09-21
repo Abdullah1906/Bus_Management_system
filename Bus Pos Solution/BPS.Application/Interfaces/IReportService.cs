@@ -1,4 +1,5 @@
-﻿using BPS.Application.DTOs.Reports;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.Reports;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,8 @@ namespace BPS.Application.Interfaces
     public interface IReportService
     {
         Task<IEnumerable<ReportDto>> GetAsync(
+            ReportFilterDto filter);
+        Task<PagedResult<ReportDto>> GetPagedAsync(
             ReportFilterDto filter);
     }
 }

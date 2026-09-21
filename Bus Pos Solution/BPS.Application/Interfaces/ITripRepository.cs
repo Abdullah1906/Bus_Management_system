@@ -1,4 +1,5 @@
-﻿using BPS.Application.DTOs.TripSearch;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -17,6 +18,7 @@ namespace BPS.Application.Interfaces
             long id);
 
         Task<IEnumerable<TripRecord>> GetAllAsync();
+        Task<PagedResult<TripRecord>> GetPagedAsync(string? search,int page, int pageSize);
         Task<TripRecord?> UpdateAsync(TripRecord trip);
 
         Task<bool> DeleteAsync(

@@ -10,6 +10,7 @@ namespace BPS.Application.Interfaces
     public interface IPlaceService
     {
         Task<IEnumerable<PlaceDto>> GetAllAsync();
+        Task<IEnumerable<PlaceDto>> GetAllByActiveAsync();
 
         Task<PlaceDto?> GetByIdAsync(int id);
 

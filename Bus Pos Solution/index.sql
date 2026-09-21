@@ -32,3 +32,26 @@ GO
 
 CREATE UNIQUE INDEX UX_Trips_Bus_Date_Time
 ON Trips(BusId, RouteId, TripDate, DepartureTime);
+
+-- for place name
+
+CREATE INDEX IX_Places_PlaceName
+ON Places (PlaceName);
+GO
+
+-- for search on trips
+CREATE INDEX IX_TripRecords_IsActive_TripDate_Id
+ON TripRecords
+(
+    IsActive,
+    TripDate DESC,
+    Id DESC
+)
+INCLUDE
+(
+    PlaceId,
+    TipStatus,
+    TipAmount,
+    Price
+);
+GO

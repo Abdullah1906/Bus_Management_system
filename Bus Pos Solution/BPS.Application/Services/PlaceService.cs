@@ -28,6 +28,14 @@ namespace BPS.Application.Services
 
             return places.Select(MapToDto);
         }
+        // GET ALL ACTIVE  
+        public async Task<IEnumerable<PlaceDto>> GetAllByActiveAsync()
+        {
+            var places =
+                await _placeRepository.GetAllByActiveAsync();
+
+            return places.Select(MapToDto);
+        }
 
 
         // GET BY ID

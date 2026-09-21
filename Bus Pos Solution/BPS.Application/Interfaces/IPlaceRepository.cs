@@ -11,6 +11,7 @@ namespace BPS.Application.Interfaces
     public interface IPlaceRepository
     {
         Task<IEnumerable<Place>> GetAllAsync();
+        Task<IEnumerable<Place>> GetAllByActiveAsync();
 
         Task<Place?> GetByIdAsync(int id);
 

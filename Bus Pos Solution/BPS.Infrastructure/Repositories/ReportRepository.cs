@@ -1,5 +1,7 @@
-﻿using BPS.Application.DTOs.Reports;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.Reports;
 using BPS.Application.Interfaces;
+using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
 using System;
@@ -158,6 +160,170 @@ namespace BPS.Infrastructure.Repositories
 
 
             return reports;
+        }
+
+
+        public async Task<PagedResult<ReportDto>> GetPagedAsync(
+     ReportFilterDto filter)
+        {
+            var result = new PagedResult<ReportDto>
+            {
+                Page = filter.Page,
+                PageSize = filter.PageSize
+            };
+
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await using var command =
+                new SqlCommand(
+                    "SP_Report_GetPaged",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+
+            // =========================
+            // FROM DATE
+            // =========================
+
+            command.Parameters.Add(
+                "@FromDate",
+                SqlDbType.Date)
+                .Value =
+                    filter.FromDate.HasValue
+                        ? filter.FromDate.Value.Date
+                        : DBNull.Value;
+
+
+            // =========================
+            // TO DATE
+            // =========================
+
+            command.Parameters.Add(
+                "@ToDate",
+                SqlDbType.Date)
+                .Value =
+                    filter.ToDate.HasValue
+                        ? filter.ToDate.Value.Date
+                        : DBNull.Value;
+
+
+            // =========================
+            // PLACE
+            // =========================
+
+            command.Parameters.Add(
+                "@PlaceId",
+                SqlDbType.Int)
+                .Value =
+                    filter.PlaceId.HasValue
+                        ? filter.PlaceId.Value
+                        : DBNull.Value;
+
+
+            // =========================
+            // PERIOD
+            // =========================
+
+            command.Parameters.Add(
+                "@Period",
+                SqlDbType.NVarChar,
+                20)
+                .Value =
+                    string.IsNullOrWhiteSpace(filter.Period)
+                        ? DBNull.Value
+                        : filter.Period;
+
+
+            // =========================
+            // PAGE
+            // =========================
+
+            command.Parameters.Add(
+                "@Page",
+                SqlDbType.Int)
+                .Value = filter.Page;
+
+
+            // =========================
+            // PAGE SIZE
+            // =========================
+
+            command.Parameters.Add(
+                "@PageSize",
+                SqlDbType.Int)
+                .Value = filter.PageSize;
+
+
+            await connection.OpenAsync();
+
+
+            await using var reader =
+                await command.ExecuteReaderAsync();
+
+
+
+            // RESULT SET 1 → DATA
+
+
+            while (await reader.ReadAsync())
+            {
+                result.Items.Add(
+                    new ReportDto
+                    {
+                        Id =
+                            reader.GetInt64(
+                                reader.GetOrdinal("Id")),
+
+                        ReportDate =
+                            reader.GetDateTime(
+                                reader.GetOrdinal("ReportDate")),
+
+                        PlaceId =
+                            reader.GetInt32(
+                                reader.GetOrdinal("PlaceId")),
+
+                        PlaceName =
+                            reader.GetString(
+                                reader.GetOrdinal("PlaceName")),
+
+                        Price =
+                            reader.GetDecimal(
+                                reader.GetOrdinal("Price")),
+
+                        TipAmount =
+                            reader.GetDecimal(
+                                reader.GetOrdinal("TipAmount")),
+
+                        Total =
+                            reader.GetDecimal(
+                                reader.GetOrdinal("Total")),
+
+                        TipStatus =
+                            reader.GetBoolean(
+                                reader.GetOrdinal("TipStatus"))
+                    });
+            }
+
+
+
+            // RESULT SET 2 → TOTAL COUNT
+
+
+            if (await reader.NextResultAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    result.TotalCount =
+                        reader.GetInt64(
+                            reader.GetOrdinal("TotalCount"));
+                }
+            }
+
+
+            return result;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using BPS.Application.DTOs.TripSearch;
+﻿using BPS.Application.DTOs.Common;
+using BPS.Application.DTOs.TripSearch;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
@@ -232,6 +233,76 @@ namespace BPS.Infrastructure.Repositories
             }
 
             return trips;
+        }
+
+        public async Task<PagedResult<TripRecord>> GetPagedAsync(string? search,int page,int pageSize)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await using var command =
+                new SqlCommand(
+                    "SP_Trip_GetPaged",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Search",
+                SqlDbType.NVarChar,
+                200)
+                .Value =
+                    string.IsNullOrWhiteSpace(search)
+                        ? DBNull.Value
+                        : search.Trim();
+
+            command.Parameters.Add(
+                "@Page",
+                SqlDbType.Int)
+                .Value = page;
+
+            command.Parameters.Add(
+                "@PageSize",
+                SqlDbType.Int)
+                .Value = pageSize;
+
+            await connection.OpenAsync();
+
+            var result =
+                new PagedResult<TripRecord>
+                {
+                    Page = page,
+                    PageSize = pageSize
+                };
+
+            await using var reader =
+                await command.ExecuteReaderAsync();
+
+            // Result Set 1: Trips
+ 
+
+            while (await reader.ReadAsync())
+            {
+                result.Items.Add(
+                    MapTrip(reader));
+            }
+
+
+            // Result Set 2: Total Count
+
+
+            if (await reader.NextResultAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    result.TotalCount =
+                        reader.GetInt64(
+                            reader.GetOrdinal("TotalCount"));
+                }
+            }
+
+            return result;
         }
 
         public async Task<bool> DeleteAsync(long id, string? updatedBy)

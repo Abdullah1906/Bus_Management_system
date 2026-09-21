@@ -45,6 +45,35 @@ public class PlaceRepository : IPlaceRepository
         return places;
     }
 
+    // GET ALL
+    public async Task<IEnumerable<Place>> GetAllByActiveAsync()
+    {
+        var places = new List<Place>();
+
+        await using var connection =
+            _connectionFactory.CreateConnection();
+
+        await using var command =
+            new SqlCommand(
+                "SP_Place_GetAll_Active",
+                connection);
+
+        command.CommandType =
+            CommandType.StoredProcedure;
+
+        await connection.OpenAsync();
+
+        await using var reader =
+            await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            places.Add(MapPlace(reader));
+        }
+
+        return places;
+    }
+
 
     // GET BY ID
     public async Task<Place?> GetByIdAsync(int id)

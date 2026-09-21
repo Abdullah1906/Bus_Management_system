@@ -30,6 +30,17 @@ namespace BPS.API.Controllers
             return Ok(places);
         }
 
+        // GET: api/place
+        [HttpGet("getallbyactive")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAllByActive()
+        {
+            var places =
+                await _placeService.GetAllByActiveAsync();
+
+            return Ok(places);
+        }
+
 
         // GET: api/place/1
         [HttpGet("get/{id:int}")]
