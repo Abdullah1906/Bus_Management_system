@@ -8,6 +8,7 @@ namespace BPS.API.Controllers
    
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class PlaceController : ControllerBase
     {
         private readonly IPlaceService _placeService;
@@ -21,7 +22,6 @@ namespace BPS.API.Controllers
 
         // GET: api/place
         [HttpGet("getall")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var places =
@@ -32,7 +32,6 @@ namespace BPS.API.Controllers
 
         // GET: api/place
         [HttpGet("getallbyactive")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetAllByActive()
         {
             var places =
@@ -44,7 +43,6 @@ namespace BPS.API.Controllers
 
         // GET: api/place/1
         [HttpGet("get/{id:int}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetById(
             int id)
         {
@@ -65,7 +63,6 @@ namespace BPS.API.Controllers
 
         // POST: api/place
         [HttpPost("create")]
-        [Authorize]
         public async Task<IActionResult> Create(
             [FromBody] CreatePlaceDto dto)
         {
@@ -95,7 +92,6 @@ namespace BPS.API.Controllers
 
         // PUT: api/place/1
         [HttpPut("update/{id:int}")]
-        [Authorize]
         public async Task<IActionResult> Update(
             int id,
             [FromBody] UpdatePlaceDto dto)
@@ -132,7 +128,6 @@ namespace BPS.API.Controllers
 
         // DELETE: api/place/1
         [HttpDelete("delete/{id:int}")]
-        [Authorize]
         public async Task<IActionResult> Delete(
             int id)
         {

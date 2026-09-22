@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BPS.API.Controllers
 {
     [ApiController]
-
     [Route("api/[controller]")]
-
     [Authorize]
     public class ReportController: ControllerBase
     {
