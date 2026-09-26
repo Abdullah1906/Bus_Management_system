@@ -189,6 +189,8 @@ BEGIN
         @CreatedBy,
         @UpdatedBy
     );
+
+    SELECT CAST(SCOPE_IDENTITY() AS INT) AS UserId;
 END;
 
 

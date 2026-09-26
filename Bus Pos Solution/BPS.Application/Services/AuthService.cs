@@ -1,5 +1,6 @@
 ﻿using BPS.Application.DTOs.Auth;
 using BPS.Application.Interfaces;
+using BPS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,6 +53,54 @@ namespace BPS.Application.Services
             {
                 Token = token,
                 UserId = user.Id,
+                Username = user.Username,
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Role = user.Role
+            };
+        }
+
+
+        public async Task<RegisterResponseDto?> RegisterAsync(RegisterRequestDto request)
+        {
+            // Check username already exists
+            var existingUser =
+                await _userRepository.GetByUsernameAsync(
+                    request.Username);
+
+            if (existingUser is not null)
+                return null;
+
+            // Hash password
+            var passwordHash =
+                _passwordHasher.HashPassword(
+                    request.Password);
+
+            var user = new User
+            {
+                Username = request.Username,
+                PasswordHash = passwordHash,
+                FullName = request.FullName,
+
+                // User cannot choose role
+                Role = "Customer",
+
+                Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+
+                IsActive = true,
+
+                CreatedBy = request.Username
+                
+            };
+
+            var userId =
+                await _userRepository.CreateAsync(user);
+
+            return new RegisterResponseDto
+            {
+                UserId = userId,
                 Username = user.Username,
                 FullName = user.FullName,
                 Email = user.Email,

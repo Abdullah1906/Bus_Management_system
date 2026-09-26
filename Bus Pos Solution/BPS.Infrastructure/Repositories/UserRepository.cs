@@ -73,5 +73,73 @@ namespace BPS.Infrastructure.Repositories
                     : reader.GetDateTime(
                         reader.GetOrdinal("UpdatedAt"))
             };
-    }   }
+        }
+
+        public async Task<int> CreateAsync(User user)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await using var command =
+                new SqlCommand(
+                    "SP_User_Create",
+                    connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Username",
+                SqlDbType.NVarChar, 100)
+                .Value = user.Username;
+
+            command.Parameters.Add(
+                "@PasswordHash",
+                SqlDbType.NVarChar, 500)
+                .Value = user.PasswordHash;
+
+            command.Parameters.Add(
+                "@FullName",
+                SqlDbType.NVarChar, 150)
+                .Value = user.FullName;
+
+            command.Parameters.Add(
+                "@Role",
+                SqlDbType.NVarChar, 50)
+                .Value = user.Role;
+
+            command.Parameters.Add(
+                "@Email",
+                SqlDbType.NVarChar, 255)
+                .Value = user.Email;
+
+            command.Parameters.Add(
+                "@PhoneNumber",
+                SqlDbType.NVarChar, 20)
+                .Value = user.PhoneNumber;
+
+            command.Parameters.Add(
+                "@IsActive",
+                SqlDbType.Bit)
+                .Value = user.IsActive;
+
+            command.Parameters.Add(
+                "@CreatedBy",
+                SqlDbType.NVarChar, 100)
+                .Value = user.CreatedBy;
+
+            command.Parameters.Add(
+                "@UpdatedBy",
+                SqlDbType.NVarChar, 100)
+                .Value = user.UpdatedBy;
+
+            await connection.OpenAsync();
+
+            var result = await command.ExecuteScalarAsync();
+
+            return Convert.ToInt32(result);
+        }
+
+    }
+
 }

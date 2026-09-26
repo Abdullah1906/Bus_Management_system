@@ -40,5 +40,41 @@ namespace BPS.API.Controllers
 
             return Ok(response);
         }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username))
+                return BadRequest("Username is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("Password is required.");
+
+            if (request.Password.Length < 6)
+                return BadRequest(
+                    "Password must be at least 6 characters.");
+
+            if (string.IsNullOrWhiteSpace(request.FullName))
+                return BadRequest("Full name is required.");
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+                return BadRequest("Email is required.");
+
+            var response =
+                await _authService.RegisterAsync(request);
+
+            if (response is null)
+            {
+                return Conflict(
+                    new
+                    {
+                        message = "Username already exists."
+                    });
+            }
+
+            return StatusCode(
+                StatusCodes.Status201Created,
+                response);
+        }
     }
 }
