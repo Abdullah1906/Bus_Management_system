@@ -76,5 +76,18 @@ namespace BPS.API.Controllers
                 StatusCodes.Status201Created,
                 response);
         }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.AccessToken) || string.IsNullOrWhiteSpace(request.RefreshToken))
+                return BadRequest("Invalid client request.");
+
+            var result = await _authService.RefreshTokenAsync(request);
+            if (result is null)
+                return Unauthorized(new { message = "Invalid or expired refresh token." });
+
+            return Ok(result);
+        }
     }
 }

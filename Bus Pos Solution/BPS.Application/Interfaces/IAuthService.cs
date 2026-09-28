@@ -10,6 +10,7 @@ namespace BPS.Application.Interfaces
     public interface IAuthService
     {
         Task<LoginResponseDto?> LoginAsync(LoginRequestDto request);
+        Task<LoginResponseDto?> RefreshTokenAsync(RefreshTokenRequestDto request);
         Task<RegisterResponseDto?> RegisterAsync(RegisterRequestDto request);
     }
 }

@@ -3242,3 +3242,99 @@ BEGIN
 
 END
 GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter PROCEDURE sp_RefreshToken_GetByToken
+    @Token NVARCHAR(500)
+AS
+BEGIN
+    SELECT Id, UserId, Token, ExpiresAt, IsRevoked, CreatedAt
+    FROM RefreshTokens
+    WHERE Token = @Token;
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter PROCEDURE sp_RefreshToken_Insert
+    @UserId INT,
+    @Token NVARCHAR(500),
+    @ExpiresAt DATETIME2,
+    @IsRevoked BIT
+AS
+BEGIN
+    INSERT INTO RefreshTokens (UserId, Token, ExpiresAt, IsRevoked, CreatedAt)
+    VALUES (@UserId, @Token, @ExpiresAt, @IsRevoked, GETUTCDATE());
+    
+    SELECT SCOPE_IDENTITY();
+END
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter PROCEDURE sp_RefreshToken_Update
+    @Id INT,
+    @IsRevoked BIT
+AS
+BEGIN
+    UPDATE RefreshTokens
+    SET IsRevoked = @IsRevoked
+    WHERE Id = @Id;
+END
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter PROCEDURE sp_RefreshToken_RevokeAllForUser
+    @UserId INT
+AS
+BEGIN
+    UPDATE RefreshTokens
+    SET IsRevoked = 1
+    WHERE UserId = @UserId AND IsRevoked = 0;
+END
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+Alter PROCEDURE SP_User_GetById
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+         [Id]
+        ,[Username]
+        ,[PasswordHash]
+        ,[FullName]
+        ,[Role]
+        ,[IsActive]
+        ,[CreatedAt]
+        ,[CreatedBy]
+        ,[UpdatedAt]
+        ,[UpdatedBy]
+        ,[Email]
+        ,[PhoneNumber]
+    FROM [BPS].[dbo].[Users]
+    WHERE [Id] = @Id;
+END
+GO

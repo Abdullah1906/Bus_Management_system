@@ -370,3 +370,4 @@ appsettings.*.json
 
 # (ঐচ্ছিক) appsettings.json ইগনোর করলেও মূল টেমপ্লেট প্রজেক্টে রাখার জন্য appsettings.Development.json ইগনোর না করতে চাইলে:
 # !appsettings.Development.json
+Bus Pos Solution/BPS.API/appsettings.json

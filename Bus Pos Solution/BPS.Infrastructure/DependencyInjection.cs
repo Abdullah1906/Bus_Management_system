@@ -33,6 +33,7 @@ namespace BPS.Infrastructure
             services.AddScoped<IBusRepository,BusRepository>();
             services.AddScoped<IBusSeatRepository,BusSeatRepository>();
             services.AddScoped<IRouteRepository,RouteRepository>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
             // Security
             services.AddScoped<IPasswordHasher, PasswordHasherService>();

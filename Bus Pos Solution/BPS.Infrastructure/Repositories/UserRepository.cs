@@ -15,6 +15,66 @@ namespace BPS.Infrastructure.Repositories
             _connectionFactory = connectionFactory;
         }
 
+        public async Task<User?> GetByIdAsync(int id)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await using var command =
+                new SqlCommand(
+                    "SP_User_GetById",
+                    (SqlConnection)connection);
+
+            command.CommandType =
+                CommandType.StoredProcedure;
+
+            command.Parameters.Add(
+                "@Id",
+                SqlDbType.Int)
+                .Value = id;
+
+            await connection.OpenAsync();
+
+            await using var reader =
+                await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+                return null;
+
+            return new User
+            {
+                Id = reader.GetInt32(
+                    reader.GetOrdinal("Id")),
+
+                Username = reader.GetString(
+                    reader.GetOrdinal("Username")),
+
+                PasswordHash = reader.GetString(
+                    reader.GetOrdinal("PasswordHash")),
+
+                FullName = reader.GetString(
+                    reader.GetOrdinal("FullName")),
+
+                Email = reader["Email"]?.ToString() ?? "",
+                PhoneNumber = reader["PhoneNumber"]?.ToString() ?? "",
+
+                Role = reader.GetString(
+                    reader.GetOrdinal("Role")),
+
+                IsActive = reader.GetBoolean(
+                    reader.GetOrdinal("IsActive")),
+
+                CreatedAt = reader.GetDateTime(
+                    reader.GetOrdinal("CreatedAt")),
+
+                UpdatedAt = reader.IsDBNull(
+                    reader.GetOrdinal("UpdatedAt"))
+                    ? null
+                    : reader.GetDateTime(
+                        reader.GetOrdinal("UpdatedAt"))
+            };
+        }
+
         public async Task<User?> GetByUsernameAsync(string username)
         {
             await using var connection =
