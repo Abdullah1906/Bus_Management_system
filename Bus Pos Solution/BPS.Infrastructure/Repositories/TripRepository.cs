@@ -94,6 +94,13 @@ namespace BPS.Infrastructure.Repositories
                 .Value =
                     (object?)trip.CreatedBy ??
                     DBNull.Value;
+            command.Parameters.Add(
+               "@Note",
+               SqlDbType.NVarChar,
+               100)
+               .Value =
+                   (object?)trip.Note ??
+                   DBNull.Value;
 
 
             await connection.OpenAsync();
@@ -163,6 +170,14 @@ namespace BPS.Infrastructure.Repositories
                 100)
                 .Value = (object?)trip.UpdatedBy
                     ?? DBNull.Value;
+
+            command.Parameters.Add(
+              "@Note",
+              SqlDbType.NVarChar,
+              100)
+              .Value =
+                  (object?)trip.Note ??
+                  DBNull.Value;
 
             await connection.OpenAsync();
 
@@ -369,8 +384,10 @@ namespace BPS.Infrastructure.Repositories
                 Total = reader.GetDecimal(
                     reader.GetOrdinal("Total")),
 
+                Note = reader.IsDBNull(reader.GetOrdinal("Note"))
+                    ? string.Empty
+                    : reader.GetString(reader.GetOrdinal("Note")),
 
-            
                 CreatedAt = reader.GetDateTime(
                     reader.GetOrdinal("CreatedAt")),
 

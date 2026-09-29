@@ -24,6 +24,7 @@ namespace BPS.Domain.Entities
         public decimal Total { get; set; }
 
         public bool IsActive { get; set; }
+        public string? Note { get; set; }
         public DateTime CreatedAt { get; set; }
 
         public string? CreatedBy { get; set; }
@@ -49,6 +50,8 @@ namespace BPS.Domain.Entities
         public decimal Total { get; set; }
 
         public bool IsActive { get; set; }
+
+        public string? Note { get; set; }
         public DateTime CreatedAt { get; set; }
 
         public string? CreatedBy { get; set; }

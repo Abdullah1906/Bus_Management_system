@@ -15,5 +15,7 @@ namespace BPS.Application.DTOs.Trips
         public bool TipStatus { get; set; }
 
         public decimal TipAmount { get; set; }
+
+        public string? Note { get; set; }
     }
 }

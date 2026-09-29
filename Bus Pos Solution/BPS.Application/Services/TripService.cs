@@ -66,7 +66,8 @@ namespace BPS.Application.Services
                 TipStatus = dto.TipStatus,
 
                 TipAmount = dto.TipAmount,
-                CreatedBy = email
+                CreatedBy = email,
+                Note = dto.Note
             };
 
             var result = await _tripRepository.CreateMultipleAsync(trip);
@@ -208,6 +209,7 @@ namespace BPS.Application.Services
 
             existingTrip.UpdatedBy =
                 email;
+            existingTrip.Note = dto.Note;
 
             var result =
                 await _tripRepository
@@ -257,7 +259,8 @@ namespace BPS.Application.Services
 
                 Price = trip.Price,
 
-                Total = trip.Total
+                Total = trip.Total,
+                Note = trip.Note
             };
         }
     }    

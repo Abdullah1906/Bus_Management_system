@@ -346,7 +346,8 @@ BEGIN
         tr.UpdatedAt,
 		tr.CreatedBy,
 		tr.UpdatedBy,
-        tr.IsActive
+        tr.IsActive,
+        tr.Note
     FROM TripRecords tr
     INNER JOIN Places p
         ON tr.PlaceId = p.Id
@@ -381,7 +382,8 @@ BEGIN
         tr.UpdatedAt,
 		tr.CreatedBy,
 		tr.UpdatedBy,
-        tr.IsActive
+        tr.IsActive,
+        tr.Note
     FROM TripRecords tr
     INNER JOIN Places p
         ON tr.PlaceId = p.Id
@@ -420,7 +422,8 @@ ALTER   PROCEDURE [dbo].[SP_Trip_Update]
     @TripDate DATE,
     @TipStatus BIT,
     @TipAmount DECIMAL(18,2),
-    @UpdatedBy NVARCHAR(100) = NULL
+    @UpdatedBy NVARCHAR(100) = NULL,
+    @Note NVARCHAR(150) =NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -475,6 +478,7 @@ BEGIN
         TipStatus = @TipStatus,
         TipAmount = @TipAmount,
         Price = @Price,
+        Note = @Note,
         UpdatedAt = GETUTCDATE(),
         UpdatedBy = @UpdatedBy
     WHERE Id = @Id
@@ -493,7 +497,8 @@ BEGIN
         tr.CreatedBy,
         tr.UpdatedAt,
         tr.UpdatedBy,
-        tr.IsActive
+        tr.IsActive,
+        tr.Note
     FROM TripRecords tr
     INNER JOIN Places p
         ON tr.PlaceId = p.Id
@@ -2716,7 +2721,8 @@ CREATE OR ALTER PROCEDURE [dbo].[SP_Trip_CreateMultiple]
     @TripDate DATE,
     @TipStatus BIT,
     @TipAmount DECIMAL(18,2),
-    @CreatedBy NVARCHAR(100) = NULL
+    @CreatedBy NVARCHAR(100) = NULL,
+	@Note NVARCHAR(150) =NULL
 )
 AS
 BEGIN
@@ -2772,7 +2778,8 @@ BEGIN
             CreatedBy,
             UpdatedAt,
             UpdatedBy,
-            IsActive
+            IsActive,
+			Note
         )
         SELECT
             p.Id,
@@ -2784,7 +2791,8 @@ BEGIN
             @CreatedBy,
             NULL,
             NULL,
-            1
+            1,
+			@Note
         FROM @PlaceIds ids
         INNER JOIN Places p
             ON p.Id = ids.PlaceId
@@ -2805,7 +2813,8 @@ BEGIN
             tr.CreatedBy,
             tr.UpdatedAt,
             tr.UpdatedBy,
-            tr.IsActive
+            tr.IsActive,
+			tr.Note
 
         FROM TripRecords tr
 
@@ -2835,7 +2844,7 @@ BEGIN
     END CATCH
 
 END;
-GO
+
 
 
 SET ANSI_NULLS ON
@@ -2901,7 +2910,8 @@ BEGIN
         tr.UpdatedAt,
         tr.CreatedBy,
         tr.UpdatedBy,
-        tr.IsActive
+        tr.IsActive,
+        tr.Note
 
     FROM TripRecords tr
 

@@ -23,5 +23,7 @@ namespace BPS.Application.DTOs.Trips
         public decimal Price { get; set; }
 
         public decimal Total { get; set; }
+
+        public string? Note { get; set; }
     }
 }
