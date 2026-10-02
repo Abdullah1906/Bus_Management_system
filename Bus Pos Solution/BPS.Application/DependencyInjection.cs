@@ -1,5 +1,6 @@
 ﻿using BPS.Application.Interfaces;
 using BPS.Application.Services;
+using BPS.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BPS.Application
@@ -18,6 +19,10 @@ namespace BPS.Application
             services.AddScoped<IBusService,BusService>();
             services.AddScoped<IBusSeatService,BusSeatService>();
             services.AddScoped<IRouteService,RouteService>();
+            services.AddScoped<IPasswordResetService, PasswordResetService>();
+
+            services.AddScoped<IEmailService, EmailService>();
+
 
             return services;
         }

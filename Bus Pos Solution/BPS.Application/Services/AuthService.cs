@@ -13,13 +13,13 @@ namespace BPS.Application.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IPasswordHasher _passwordHasher;
+        private readonly IPasswordHasher<User> _passwordHasher;
         private readonly IJwtTokenService _jwtTokenService;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
 
         public AuthService(
             IUserRepository userRepository,
-            IPasswordHasher passwordHasher,
+            IPasswordHasher<User> passwordHasher,
             IJwtTokenService jwtTokenService,
             IRefreshTokenRepository refreshTokenRepository)
         {
@@ -42,8 +42,10 @@ namespace BPS.Application.Services
             if (!user.IsActive)
                 return null;
 
+
             var passwordValid =
                 _passwordHasher.VerifyPassword(
+                    user,
                     request.Password,
                     user.PasswordHash);
 
@@ -131,9 +133,14 @@ namespace BPS.Application.Services
                 return null;
 
             // Hash password
+
+            var tempUser = new User();
             var passwordHash =
                 _passwordHasher.HashPassword(
+                    tempUser,
                     request.Password);
+
+
 
             var user = new User
             {

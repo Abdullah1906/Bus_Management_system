@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace BPS.Application.Interfaces
 {
-    public interface IPasswordHasher
+    public interface IPasswordHasher<TUser> where TUser : class
     {
-        string HashPassword(string password);
+        string HashPassword(TUser user, string password);
 
-        bool VerifyPassword(string password, string passwordHash);
+        bool VerifyPassword(TUser user, string password, string passwordHash);
     }
 }

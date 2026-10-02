@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BPS.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace BPS.Infrastructure
 {
@@ -34,13 +36,18 @@ namespace BPS.Infrastructure
             services.AddScoped<IBusSeatRepository,BusSeatRepository>();
             services.AddScoped<IRouteRepository,RouteRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            services.AddScoped<IPasswordResetRepository,PasswordResetRepository>();
+
+
 
             // Security
-            services.AddScoped<IPasswordHasher, PasswordHasherService>();
+            services.AddScoped<Application.Interfaces.IPasswordHasher<User>, PasswordHasherService>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
             // Services
             services.AddScoped<IUserSeeder, UserSeeder>();
             services.AddHostedService<SeatLockCleanupWorker>();
+            services.AddScoped<ITokenGenerator, PasswordResetTokenGenerator>();
+            //services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
         }

@@ -1,6 +1,7 @@
 ﻿using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
 using BPS.Infrastructure.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Data;
@@ -11,9 +12,9 @@ namespace BPS.Infrastructure.Services
     {
         private readonly SqlConnectionFactory _connectionFactory;
         private readonly IConfiguration _configuration;
-        private readonly IPasswordHasher _passwordHasher;
+        private readonly Application.Interfaces.IPasswordHasher<User> _passwordHasher;
 
-        public UserSeeder(SqlConnectionFactory connectionFactory, IConfiguration configuration,IPasswordHasher passwordHasher)
+        public UserSeeder(SqlConnectionFactory connectionFactory, IConfiguration configuration,Application.Interfaces.IPasswordHasher<User> passwordHasher)
         {
             _connectionFactory = connectionFactory;
             _configuration = configuration;
@@ -114,7 +115,7 @@ namespace BPS.Infrastructure.Services
             // 3. Generate password hash
             // -----------------------------------------
 
-            admin.PasswordHash =_passwordHasher.HashPassword(adminPassword);
+            admin.PasswordHash = _passwordHasher.HashPassword(admin, adminPassword);
 
             // -----------------------------------------
             // 4. Insert Admin using Stored Procedure

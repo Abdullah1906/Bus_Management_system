@@ -449,3 +449,26 @@ BEGIN
 	ALTER TABLE [dbo].[TripRecords] ADD Note NVARCHAR(150) NULL
 END
 GO
+
+
+CREATE TABLE PasswordResetTokens
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    UserId INT NOT NULL,
+
+    TokenHash CHAR(64) NOT NULL,
+
+    ExpiresAt DATETIME2 NOT NULL,
+
+    UsedAt DATETIME2 NULL,
+
+    CreatedAt DATETIME2 NOT NULL
+        CONSTRAINT DF_PasswordResetTokens_CreatedAt
+        DEFAULT SYSUTCDATETIME(),
+
+    CONSTRAINT FK_PasswordResetTokens_Users
+        FOREIGN KEY (UserId)
+        REFERENCES Users(Id)
+);
+GO

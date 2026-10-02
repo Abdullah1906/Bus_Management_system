@@ -55,3 +55,12 @@ INCLUDE
     Price
 );
 GO
+
+-- for password reset tokens
+CREATE INDEX IX_PasswordResetTokens_TokenHash
+ON PasswordResetTokens(TokenHash);
+GO
+
+CREATE INDEX IX_PasswordResetTokens_UserId
+ON PasswordResetTokens(UserId);
+GO

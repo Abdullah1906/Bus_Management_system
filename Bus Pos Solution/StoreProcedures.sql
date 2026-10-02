@@ -3348,3 +3348,54 @@ BEGIN
     WHERE [Id] = @Id;
 END
 GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_User_GetByEmail
+    @Email NVARCHAR(256)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 1
+        Id,
+        Username,
+        Email,
+        IsActive
+    FROM Users
+    WHERE Email = @Email;
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_PasswordResetToken_Create
+    @UserId INT,
+    @TokenHash CHAR(64),
+    @ExpiresAt DATETIME2
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO PasswordResetTokens
+    (
+        UserId,
+        TokenHash,
+        ExpiresAt,
+        CreatedAt
+    )
+    VALUES
+    (
+        @UserId,
+        @TokenHash,
+        @ExpiresAt,
+        SYSUTCDATETIME()
+    );
+END;
+GO
