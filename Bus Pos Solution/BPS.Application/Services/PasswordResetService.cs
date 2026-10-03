@@ -1,10 +1,13 @@
 ﻿using BPS.Application.DTOs.PasswordReset;
 using BPS.Application.Interfaces;
 using BPS.Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,24 +21,28 @@ namespace BPS.Application.Services
         private readonly IPasswordHasher<User> _passwordHasher;
 
         private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly HttpClient _httpClient;
 
         public PasswordResetService(
             IPasswordResetRepository repository,
             ITokenGenerator tokenGenerator,
             IEmailService emailService,
             IPasswordHasher<User> passwordHasher,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHttpContextAccessor httpContextAccessor,
+            HttpClient httpClient)
         {
             _repository = repository;
             _tokenGenerator = tokenGenerator;
             _emailService = emailService;
             _passwordHasher = passwordHasher;
             _configuration = configuration;
+            _httpContextAccessor = httpContextAccessor;
+            _httpClient = httpClient;
         }
 
-        public async Task<AuthMessageResponse> ForgotPasswordAsync(
-            ForgotPasswordRequest request,
-            CancellationToken cancellationToken)
+        public async Task<AuthMessageResponse> ForgotPasswordAsync(ForgotPasswordRequest request,CancellationToken cancellationToken)
         {
             var email = request.Email.Trim();
 
@@ -61,6 +68,14 @@ namespace BPS.Application.Services
             var tokenHash =
                 _tokenGenerator.HashToken(rawToken);
 
+            //// ip address and timezone logic
+            //var httpContext = _httpContextAccessor.HttpContext;
+            //string userIpAddress = httpContext?.Connection.RemoteIpAddress?.ToString();
+            //string timeZoneId = await GetTimeZoneFromIpAsync(userIpAddress);
+
+            //TimeZoneInfo targetZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            //DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, targetZone);
+
             var resetToken = new PasswordResetToken
             {
                 UserId = userId.Value,
@@ -68,6 +83,8 @@ namespace BPS.Application.Services
                 ExpiresAt =
                     DateTime.UtcNow.AddMinutes(30),
                 CreatedAt = DateTime.UtcNow
+                //ExpiresAt = localTime.AddMinutes(30),
+                //CreatedAt = localTime
             };
 
             await _repository.CreateTokenAsync(
@@ -136,6 +153,29 @@ namespace BPS.Application.Services
                 Message =
                     "Your password has been reset successfully."
             };
+        }
+
+        /// <summary>
+        /// Gets the timezone based on the user's IP address using the ip-api.com service.
+        /// </summary>
+        /// <param name="ipAddress"></param>
+        /// <returns></returns>
+        private async Task<string> GetTimeZoneFromIpAsync(string ipAddress)
+        {
+            try
+            {
+                string url = $"http://ip-api.com/json/{ipAddress}?fields=timezone";
+                var response = await _httpClient.GetStringAsync(url);
+
+                var json = JObject.Parse(response);
+                string timezone = json["timezone"]?.ToString();
+
+                return !string.IsNullOrEmpty(timezone) ? timezone : "America/New_York";
+            }
+            catch
+            {
+                return "America/New_York"; 
+            }
         }
     }
 }

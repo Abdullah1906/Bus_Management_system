@@ -3399,3 +3399,62 @@ BEGIN
     );
 END;
 GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE SP_User_ResetPassword
+    @TokenHash CHAR(64),
+    @PasswordHash NVARCHAR(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRANSACTION;
+
+    DECLARE @UserId INT;
+
+    SELECT TOP 1
+        @UserId = UserId
+    FROM PasswordResetTokens WITH (UPDLOCK, ROWLOCK)
+    WHERE TokenHash = @TokenHash
+      AND UsedAt IS NULL
+      AND ExpiresAt > SYSUTCDATETIME();
+
+    IF @UserId IS NULL
+    BEGIN
+        ROLLBACK TRANSACTION;
+
+        SELECT
+            CAST(NULL AS INT) AS UserId;
+
+        RETURN;
+    END;
+
+    UPDATE Users
+    SET
+        PasswordHash = @PasswordHash
+    WHERE Id = @UserId;
+
+    UPDATE PasswordResetTokens
+    SET
+        UsedAt = SYSUTCDATETIME()
+    WHERE TokenHash = @TokenHash
+      AND UsedAt IS NULL;
+
+    -- Revoke all existing refresh tokens
+	UPDATE RefreshTokens
+    SET
+        IsRevoked = 1
+    WHERE UserId = @UserId
+      AND IsRevoked = 0;
+
+    COMMIT TRANSACTION;
+
+    SELECT
+        @UserId AS UserId;
+END;
+GO
