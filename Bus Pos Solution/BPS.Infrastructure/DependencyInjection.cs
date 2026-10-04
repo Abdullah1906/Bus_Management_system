@@ -37,6 +37,7 @@ namespace BPS.Infrastructure
             services.AddScoped<IRouteRepository,RouteRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IPasswordResetRepository,PasswordResetRepository>();
+            services.AddScoped<IPermissionRepository, PermissionRepository>();
 
 
 

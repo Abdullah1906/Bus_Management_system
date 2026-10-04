@@ -3458,3 +3458,44 @@ BEGIN
         @UserId AS UserId;
 END;
 GO
+
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE SP_Permission_GetByRole
+(
+    @RoleName NVARCHAR(50)
+)
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+
+    SELECT
+        p.Id,
+        p.Code,
+        p.Name,
+        p.Module
+
+    FROM Roles r
+
+    INNER JOIN RolePermissions rp
+        ON r.Id = rp.RoleId
+
+    INNER JOIN Permissions p
+        ON rp.PermissionId = p.Id
+
+    WHERE
+        r.Name = @RoleName
+        AND r.IsActive = 1
+        AND p.IsActive = 1
+
+    ORDER BY
+        p.Module,
+        p.Name;
+
+END

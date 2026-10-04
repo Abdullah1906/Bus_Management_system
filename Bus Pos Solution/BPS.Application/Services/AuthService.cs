@@ -16,17 +16,20 @@ namespace BPS.Application.Services
         private readonly IPasswordHasher<User> _passwordHasher;
         private readonly IJwtTokenService _jwtTokenService;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
+        private readonly IPermissionRepository _permissionRepository;
 
         public AuthService(
             IUserRepository userRepository,
             IPasswordHasher<User> passwordHasher,
             IJwtTokenService jwtTokenService,
-            IRefreshTokenRepository refreshTokenRepository)
+            IRefreshTokenRepository refreshTokenRepository,
+            IPermissionRepository permissionRepository)
         {
             _userRepository = userRepository;
             _passwordHasher = passwordHasher;
             _jwtTokenService = jwtTokenService;
             _refreshTokenRepository = refreshTokenRepository;
+            _permissionRepository = permissionRepository;
         }
 
         public async Task<LoginResponseDto?> LoginAsync(
@@ -63,6 +66,7 @@ namespace BPS.Application.Services
                 IsRevoked = false
             };
             await _refreshTokenRepository.AddAsync(refreshToken);
+            var permissions = await _permissionRepository.GetPermissionsByRoleAsync(user.Role);
 
             return new LoginResponseDto
             {
@@ -73,7 +77,8 @@ namespace BPS.Application.Services
                 FullName = user.FullName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber,
-                Role = user.Role
+                Role = user.Role,
+                Permissions = permissions
             };
         }
 

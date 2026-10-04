@@ -472,3 +472,57 @@ CREATE TABLE PasswordResetTokens
         REFERENCES Users(Id)
 );
 GO
+
+--For Roles and Permissions
+CREATE TABLE Roles
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(50) NOT NULL UNIQUE,
+    Description NVARCHAR(250) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CreatedBy INT NULL,
+    UpdatedAt DATETIME2 NULL,
+    UpdatedBy INT NULL
+);
+
+CREATE TABLE Permissions
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    Code NVARCHAR(100) NOT NULL UNIQUE,
+
+    Name NVARCHAR(100) NOT NULL,
+
+    Description NVARCHAR(250) NULL,
+
+    Module NVARCHAR(50) NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+);
+
+CREATE TABLE RolePermissions
+(
+    RoleId INT NOT NULL,
+    PermissionId INT NOT NULL,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+
+    CONSTRAINT PK_RolePermissions
+        PRIMARY KEY (RoleId, PermissionId),
+
+    CONSTRAINT FK_RolePermissions_Roles
+        FOREIGN KEY (RoleId)
+        REFERENCES Roles(Id),
+
+    CONSTRAINT FK_RolePermissions_Permissions
+        FOREIGN KEY (PermissionId)
+        REFERENCES Permissions(Id)
+);
+
+-- add roleid at users table
+ALTER TABLE Users
+ADD RoleId INT NULL;
