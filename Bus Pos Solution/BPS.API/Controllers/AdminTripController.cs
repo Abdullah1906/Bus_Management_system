@@ -10,7 +10,7 @@ namespace BPS.API.Controllers
 {
     [ApiController]
     [Route("api/v1/admin/trips")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class AdminTripController
     : ControllerBase
     {

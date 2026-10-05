@@ -36,6 +36,13 @@ VALUES
 ('bus.delete', 'Delete Bus', 'Can delete bus', 'Bus'),
 ('bus.seats.manage', 'Manage Bus Seats', 'Can manage seat layouts for buses', 'Bus'),
 
+-- Bus Seat Sub-permissions (API Specific)
+('bus.seat.view', 'View Bus Seats', 'Can view bus seats', 'Bus'),
+('bus.seat.create', 'Create Bus Seat', 'Can create bus seats', 'Bus'),
+('bus.seat.edit', 'Edit Bus Seat', 'Can edit bus seats', 'Bus'),
+('bus.seat.delete', 'Delete Bus Seat', 'Can delete bus seats', 'Bus'),
+('bus.seat.status.update', 'Update Bus Seat Status', 'Can update bus seat status', 'Bus'),
+
 -- Routes (Admin Routes)
 ('route.view', 'View Route', 'Can view routes', 'Route'),
 ('route.create', 'Create Route', 'Can create route', 'Route'),
@@ -88,3 +95,13 @@ SELECT
     1,
     Id
 FROM Permissions;
+
+
+-- delete table data
+Truncate table RolePermissions;
+DELETE FROM Permissions;
+DELETE FROM Roles;
+
+-- then reset id
+DBCC CHECKIDENT ('Roles', RESEED, 0);
+DBCC CHECKIDENT ('Permissions', RESEED, 0);
