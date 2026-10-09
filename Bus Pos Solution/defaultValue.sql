@@ -17,7 +17,7 @@ VALUES
 -- Dashboard
 ('dashboard.view', 'View Dashboard', 'Can view dashboard', 'Dashboard'),
 
--- Places (আপনার রাউটে places আছে কিন্তু আগের পারমিশনে ছিল না)
+-- Places 
 ('place.view', 'View Place', 'Can view places', 'Place'),
 ('place.create', 'Create Place', 'Can create place', 'Place'),
 ('place.edit', 'Edit Place', 'Can edit place', 'Place'),
