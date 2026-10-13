@@ -505,6 +505,29 @@ BEGIN
     WHERE tr.Id = @Id;
 END;
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[SP_Trip_DeleteAll]
+    @Ids        dbo.TripIdTable READONLY,
+    @UpdatedBy  NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE tr
+    SET
+        tr.IsActive  = 0,
+        tr.UpdatedAt = GETUTCDATE(),
+        tr.UpdatedBy = @UpdatedBy
+    FROM TripRecords tr
+    INNER JOIN @Ids i ON tr.Id = i.Id
+    WHERE tr.IsActive = 1;
+
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
 
 
 SET ANSI_NULLS ON

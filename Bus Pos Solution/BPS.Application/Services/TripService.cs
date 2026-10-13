@@ -16,6 +16,7 @@ namespace BPS.Application.Services
     {
         private readonly ITripRepository _tripRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private const int MaxBulkDeleteCount = 100;
         public TripService(
             ITripRepository tripRepository, IHttpContextAccessor httpContextAccessor)
         {
@@ -238,6 +239,35 @@ namespace BPS.Application.Services
 
             return await _tripRepository
                 .DeleteAsync(id, email);
+        }
+
+        public async Task<int> DeleteMultipleAsync(DeleteMultipleTripDto dto)
+        {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            var ids = dto.Ids
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+                throw new ArgumentException(
+                    "At least one trip must be selected.");
+
+            if (ids.Count > MaxBulkDeleteCount)
+                throw new ArgumentException(
+                    $"You can delete maximum {MaxBulkDeleteCount} trips at a time.");
+
+            var email =
+                _httpContextAccessor
+                    .HttpContext?
+                    .User?
+                    .FindFirst(ClaimTypes.Email)?
+                    .Value;
+
+            return await _tripRepository
+                .DeleteMultipleAsync(ids, email);
         }
 
 

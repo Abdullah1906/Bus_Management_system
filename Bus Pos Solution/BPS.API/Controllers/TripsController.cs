@@ -103,5 +103,26 @@ namespace BPS.API.Controllers
 
             return NoContent();
         }
+
+
+        //[Authorize(Roles = "Admin")]
+        [HttpPost("delete-multiple")]
+        public async Task<IActionResult> DeleteMultiple(DeleteMultipleTripDto dto)
+        {
+            var deletedCount =
+                await _tripService
+                    .DeleteMultipleAsync(dto);
+
+            if (deletedCount == 0)
+            {
+                return NotFound(new
+                {
+                    message = "No trips found to delete."
+                });
+            }
+
+            return Ok(new { deletedCount });
+        }
+
     }
 }

@@ -21,11 +21,13 @@ namespace BPS.Application.Interfaces
         Task<PagedResult<TripRecord>> GetPagedAsync(string? search,int page, int pageSize);
         Task<TripRecord?> UpdateAsync(TripRecord trip);
 
-        Task<bool> DeleteAsync(
-            long id,
-            string? updatedBy);
+        Task<bool> DeleteAsync(long id, string? updatedBy);
 
-      
+
+        Task<int> DeleteMultipleAsync(IEnumerable<long> ids,string? updatedBy);
+
+
+
 
     }
 }

@@ -526,3 +526,11 @@ CREATE TABLE RolePermissions
 -- add roleid at users table
 ALTER TABLE Users
 ADD RoleId INT NULL;
+
+
+--- use Table Type for SP_Trip_DeleteAll
+CREATE TYPE dbo.TripIdTable AS TABLE
+(
+    Id BIGINT NOT NULL PRIMARY KEY
+);
+GO

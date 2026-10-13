@@ -354,6 +354,79 @@ namespace BPS.Infrastructure.Repositories
             return result > 0;
         }
 
+
+        //public async Task<int> DeleteAllAsync(string? updatedBy)
+        //{
+        //    await using var connection =
+        //        _connectionFactory.CreateConnection();
+
+        //    await using var command =
+        //        new SqlCommand(
+        //            "dbo.SP_Trip_DeleteAll",
+        //            connection);
+
+        //    command.CommandType =
+        //        CommandType.StoredProcedure;
+
+        //    command.Parameters.Add(
+        //        "@UpdatedBy",
+        //        SqlDbType.NVarChar,
+        //        100)
+        //        .Value = (object?)updatedBy ?? DBNull.Value;
+
+        //    await connection.OpenAsync();
+
+        //    var result = await command.ExecuteScalarAsync();
+
+        //    if (result == null || result == DBNull.Value)
+        //        return 0;
+
+        //    return Convert.ToInt32(result);
+        //}
+
+        public async Task<int> DeleteMultipleAsync(IEnumerable<long> ids, string? updatedBy)
+        {
+            await using var connection =
+                _connectionFactory.CreateConnection();
+
+            await using var command =
+                new SqlCommand(
+                    "SP_Trip_DeleteAll",
+                    connection);
+
+            command.CommandType = CommandType.StoredProcedure;
+
+            var idsParameter =
+                command.Parameters.Add(
+                    "@Ids",
+                    SqlDbType.Structured);
+
+            idsParameter.TypeName = "dbo.TripIdTable";
+            idsParameter.Value = CreateTripIdTable(ids);
+
+            command.Parameters.Add(
+                "@UpdatedBy",
+                SqlDbType.NVarChar,
+                100)
+                .Value = (object?)updatedBy ?? DBNull.Value;
+
+            await connection.OpenAsync();
+
+            return Convert.ToInt32(
+                await command.ExecuteScalarAsync());
+        }
+
+        private static DataTable CreateTripIdTable(IEnumerable<long> ids)
+        {
+            var table = new DataTable();
+            table.Columns.Add("Id", typeof(long));
+
+            foreach (var id in ids)
+                table.Rows.Add(id);
+
+            return table;
+        }
+
         private static TripRecord MapTrip(
             SqlDataReader reader)
         {

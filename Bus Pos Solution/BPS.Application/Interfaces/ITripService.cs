@@ -18,8 +18,8 @@ namespace BPS.Application.Interfaces
 
         Task<TripDto?> UpdateAsync(long id,UpdateTripDto dto);
 
-        Task<bool> DeleteAsync(
-            long id);
-        
+        Task<bool> DeleteAsync(long id);
+        Task<int> DeleteMultipleAsync(DeleteMultipleTripDto dto);
+
     }
 }
