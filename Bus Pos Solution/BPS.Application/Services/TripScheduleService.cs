@@ -210,7 +210,7 @@ namespace BPS.Application.Services
             return await _repository.SearchAsync(
                 request.FromPlace.Trim(),
                 request.ToPlace.Trim(),
-                request.TripDate.Date);
+                request.TripDate);
         }
 
         public async Task<IEnumerable<TripSeatDto>> GetSeatsAsync(long tripId)

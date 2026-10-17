@@ -2606,6 +2606,12 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+	DECLARE @Now DATETIME2(0) =DATEADD(HOUR, 6, SYSUTCDATETIME());
+
+    DECLARE @Today DATE = CAST(@Now AS DATE);
+    DECLARE @CurrentTime TIME(0) = CAST(@Now AS TIME);
+
+
     SELECT
         t.Id AS TripId,
 
@@ -2649,12 +2655,9 @@ BEGIN
         AND r.FromPlace = @FromPlace
         AND r.ToPlace = @ToPlace
 		AND (
-			 t.TripDate > CAST(GETUTCDATE() AS DATE)
-			 OR (
-				  t.TripDate = CAST(GETUTCDATE() AS DATE)
-				  AND t.DepartureTime > CAST(GETUTCDATE() AS TIME)
-			 )
-		)
+                t.TripDate = @Today
+                AND t.DepartureTime > @CurrentTime
+        )
 
     GROUP BY
         t.Id,
