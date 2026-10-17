@@ -2408,7 +2408,11 @@ ALTER PROCEDURE [dbo].[SP_TripSchedule_GetAll]
 AS
 BEGIN
     SET NOCOUNT ON;
-	DECLARE @TodayDate DATE = CAST(GETUTCDATE() AS DATE);
+
+	DECLARE @Now DATETIME2(0) = DATEADD(HOUR, 6, SYSUTCDATETIME());
+	DECLARE @TodayDate DATE =  CAST(@Now AS DATE);
+	DECLARE @CurrentTime TIME(0) = CAST(@Now AS TIME);
+
     SELECT
         t.Id,
         t.BusId,
@@ -2435,7 +2439,15 @@ BEGIN
 
     INNER JOIN dbo.Routes r
         ON r.Id = t.RouteId
-	WHERE ISNULL(t.IsDeleted, 0) = 0 AND CAST(t.TripDate AS DATE) >= @TodayDate
+	WHERE ISNULL(t.IsDeleted, 0) = 0 AND 
+		(
+            t.TripDate > @TodayDate
+            OR (
+                t.TripDate = @TodayDate
+                AND t.DepartureTime >= @CurrentTime
+            )
+        )
+
     ORDER BY
         t.TripDate ASC,
         t.DepartureTime ASC,
@@ -2655,8 +2667,11 @@ BEGIN
         AND r.FromPlace = @FromPlace
         AND r.ToPlace = @ToPlace
 		AND (
+            t.TripDate > @Today
+            OR (
                 t.TripDate = @Today
                 AND t.DepartureTime > @CurrentTime
+            )
         )
 
     GROUP BY
