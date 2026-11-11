@@ -3540,3 +3540,533 @@ BEGIN
         p.Name;
 
 END
+
+
+
+--For staff-------------------
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_CreateStaff
+(
+    @FullName NVARCHAR(150),
+    @PhoneNumber NVARCHAR(20),
+    @AlternativeContact NVARCHAR(20) = NULL,
+    @PresentAddress NVARCHAR(500) = NULL,
+    @PermanentAddress NVARCHAR(500) = NULL,
+
+    @NIDNumber NVARCHAR(30),
+    @PassportOrBirthCertificate NVARCHAR(50) = NULL,
+
+    @RoleType NVARCHAR(30),
+    @JoiningDate DATE,
+
+    @DrivingLicenseNumber NVARCHAR(50) = NULL,
+    @LicenseExpiryDate DATE = NULL,
+    @LicenseType NVARCHAR(20) = NULL,
+
+    @BaseSalary DECIMAL(18,2),
+
+    @BankName NVARCHAR(100) = NULL,
+    @BankAccountNumber NVARCHAR(100) = NULL,
+    @MobileBankingProvider NVARCHAR(50) = NULL,
+    @MobileBankingNumber NVARCHAR(20) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+
+        -- Duplicate NID
+        IF EXISTS
+        (
+            SELECT 1
+            FROM dbo.Staff
+            WHERE NIDNumber = @NIDNumber
+        )
+        BEGIN
+            THROW 50001, 'NID number already exists.', 1;
+        END;
+
+        -- Duplicate License
+        IF @DrivingLicenseNumber IS NOT NULL
+           AND EXISTS
+           (
+               SELECT 1
+               FROM dbo.Staff
+               WHERE DrivingLicenseNumber = @DrivingLicenseNumber
+           )
+        BEGIN
+            THROW 50002, 'Driving license already exists.', 1;
+        END;
+
+        INSERT INTO dbo.Staff
+        (
+            FullName,
+            PhoneNumber,
+            AlternativeContact,
+            PresentAddress,
+            PermanentAddress,
+            NIDNumber,
+            PassportOrBirthCertificate,
+            RoleType,
+            JoiningDate,
+            DrivingLicenseNumber,
+            LicenseExpiryDate,
+            LicenseType,
+            BaseSalary,
+            BankName,
+            BankAccountNumber,
+            MobileBankingProvider,
+            MobileBankingNumber
+        )
+        VALUES
+        (
+            @FullName,
+            @PhoneNumber,
+            @AlternativeContact,
+            @PresentAddress,
+            @PermanentAddress,
+            @NIDNumber,
+            @PassportOrBirthCertificate,
+            @RoleType,
+            @JoiningDate,
+            @DrivingLicenseNumber,
+            @LicenseExpiryDate,
+            @LicenseType,
+            @BaseSalary,
+            @BankName,
+            @BankAccountNumber,
+            @MobileBankingProvider,
+            @MobileBankingNumber
+        );
+
+        SELECT
+            CAST(SCOPE_IDENTITY() AS INT) AS StaffId,
+            'Staff created successfully.' AS Message;
+
+    END TRY
+    BEGIN CATCH
+        THROW;
+    END CATCH
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE OR ALTER PROCEDURE dbo.sp_GetStaffList
+(
+    @RoleType NVARCHAR(30) = NULL,
+    @Status NVARCHAR(20) = NULL,
+    @Search NVARCHAR(150) = NULL,
+    @Page INT = 1,
+    @PageSize INT = 10
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @Page < 1 SET @Page = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+    IF @PageSize > 100 SET @PageSize = 100;
+
+    DECLARE @Offset INT = (@Page - 1) * @PageSize;
+
+    SELECT
+        StaffId,
+        FullName,
+        PhoneNumber,
+        NIDNumber,
+        RoleType,
+        JoiningDate,
+        DrivingLicenseNumber,
+        LicenseExpiryDate,
+        LicenseType,
+        BaseSalary,
+        Status,
+        CreatedAt
+    FROM dbo.Staff
+    WHERE
+        (@RoleType IS NULL OR RoleType = @RoleType)
+        AND
+        (@Status IS NULL OR Status = @Status)
+        AND
+        (
+            @Search IS NULL
+            OR FullName LIKE '%' + @Search + '%'
+            OR PhoneNumber LIKE '%' + @Search + '%'
+            OR NIDNumber LIKE '%' + @Search + '%'
+        )
+    ORDER BY StaffId DESC
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+
+    -- Total Count
+    SELECT COUNT_BIG(*) AS TotalRecords
+    FROM dbo.Staff
+    WHERE
+        (@RoleType IS NULL OR RoleType = @RoleType)
+        AND
+        (@Status IS NULL OR Status = @Status)
+        AND
+        (
+            @Search IS NULL
+            OR FullName LIKE '%' + @Search + '%'
+            OR PhoneNumber LIKE '%' + @Search + '%'
+            OR NIDNumber LIKE '%' + @Search + '%'
+        );
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_GenerateMonthlyPayroll
+(
+    @PayrollMonth DATE
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF DAY(@PayrollMonth) <> 1
+    BEGIN
+        THROW 50003,
+        'PayrollMonth must be the first day of a month.', 1;
+    END;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO dbo.StaffSalaryPayments
+        (
+            StaffId,
+            PayrollMonth,
+            BaseSalary,
+            BonusAmount,
+            DeductionAmount,
+            PaymentStatus
+        )
+        SELECT
+            S.StaffId,
+            @PayrollMonth,
+            S.BaseSalary,
+            0,
+            0,
+            'Unpaid'
+        FROM dbo.Staff AS S
+        WHERE S.Status = 'Active'
+          AND S.JoiningDate <= EOMONTH(@PayrollMonth)
+          AND NOT EXISTS
+          (
+              SELECT 1
+              FROM dbo.StaffSalaryPayments AS P
+                   WITH (UPDLOCK, HOLDLOCK)
+              WHERE P.StaffId = S.StaffId
+                AND P.PayrollMonth = @PayrollMonth
+          );
+
+        DECLARE @GeneratedCount INT = @@ROWCOUNT;
+
+        COMMIT TRANSACTION;
+
+        SELECT
+            @GeneratedCount AS GeneratedCount,
+            @PayrollMonth AS PayrollMonth,
+            'Payroll generated successfully.' AS Message;
+
+    END TRY
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+
+    END CATCH
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_UpdatePayrollAdjustment
+(
+    @PaymentId BIGINT,
+    @BonusAmount DECIMAL(18,2),
+    @DeductionAmount DECIMAL(18,2),
+    @AdjustmentRemarks NVARCHAR(500) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @BonusAmount < 0 OR @DeductionAmount < 0
+        THROW 50004, 'Invalid adjustment amount.', 1;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        UPDATE dbo.StaffSalaryPayments
+        SET
+            BonusAmount = @BonusAmount,
+            DeductionAmount = @DeductionAmount,
+            AdjustmentRemarks = @AdjustmentRemarks,
+            UpdatedAt = SYSDATETIME()
+        WHERE PaymentId = @PaymentId
+          AND PaymentStatus = 'Unpaid'
+          AND BaseSalary + @BonusAmount >= @DeductionAmount;
+
+        IF @@ROWCOUNT = 0
+            THROW 50005,
+            'Payroll not found, already paid, or invalid net salary.', 1;
+
+        COMMIT TRANSACTION;
+
+        SELECT
+            PaymentId,
+            BaseSalary,
+            BonusAmount,
+            DeductionAmount,
+            NetPayable,
+            AdjustmentRemarks
+        FROM dbo.StaffSalaryPayments
+        WHERE PaymentId = @PaymentId;
+
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_GetMonthlyPayroll
+(
+    @PayrollMonth DATE,
+    @RoleType NVARCHAR(30) = NULL,
+    @PaymentStatus NVARCHAR(20) = NULL,
+    @Search NVARCHAR(150) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF DAY(@PayrollMonth) <> 1
+        THROW 50006, 'Invalid payroll month.', 1;
+
+    SELECT
+        P.PaymentId,
+        P.StaffId,
+
+        S.FullName,
+        S.PhoneNumber,
+        S.RoleType,
+
+        P.PayrollMonth,
+        P.BaseSalary,
+        P.BonusAmount,
+        P.DeductionAmount,
+        P.NetPayable,
+
+        P.AdjustmentRemarks,
+        P.PaymentStatus,
+        P.PaymentMethod,
+        P.TransactionRef,
+        P.PaidAt
+
+    FROM dbo.StaffSalaryPayments AS P
+    INNER JOIN dbo.Staff AS S
+        ON S.StaffId = P.StaffId
+
+    WHERE P.PayrollMonth = @PayrollMonth
+
+      AND
+      (
+          @RoleType IS NULL
+          OR S.RoleType = @RoleType
+      )
+
+      AND
+      (
+          @PaymentStatus IS NULL
+          OR P.PaymentStatus = @PaymentStatus
+      )
+
+      AND
+      (
+          @Search IS NULL
+          OR S.FullName LIKE '%' + @Search + '%'
+          OR S.PhoneNumber LIKE '%' + @Search + '%'
+      )
+
+    ORDER BY S.FullName;
+
+    -- Summary
+    SELECT
+        COUNT_BIG(*) AS TotalStaff,
+
+        SUM(CASE WHEN PaymentStatus = 'Paid'
+            THEN 1 ELSE 0 END) AS PaidCount,
+
+        SUM(CASE WHEN PaymentStatus = 'Unpaid'
+            THEN 1 ELSE 0 END) AS UnpaidCount,
+
+        COALESCE(SUM(NetPayable), 0) AS TotalPayable,
+
+        COALESCE(SUM(CASE WHEN PaymentStatus = 'Paid'
+            THEN NetPayable ELSE 0 END), 0) AS TotalPaid,
+
+        COALESCE(SUM(CASE WHEN PaymentStatus = 'Unpaid'
+            THEN NetPayable ELSE 0 END), 0) AS TotalUnpaid
+
+    FROM dbo.StaffSalaryPayments AS P
+    INNER JOIN dbo.Staff AS S
+        ON S.StaffId = P.StaffId
+
+    WHERE P.PayrollMonth = @PayrollMonth
+      AND (@RoleType IS NULL OR S.RoleType = @RoleType)
+      AND (@PaymentStatus IS NULL OR P.PaymentStatus = @PaymentStatus)
+      AND
+      (
+          @Search IS NULL
+          OR S.FullName LIKE '%' + @Search + '%'
+          OR S.PhoneNumber LIKE '%' + @Search + '%'
+      );
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_ProcessStaffSalaryPayment
+(
+    @PaymentId BIGINT,
+    @PaymentMethod NVARCHAR(30),
+    @TransactionRef NVARCHAR(150) = NULL,
+    @PaidByUserId INT = NULL,
+    @Remarks NVARCHAR(500) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @NetPayable DECIMAL(18,2);
+    DECLARE @CurrentStatus NVARCHAR(20);
+    DECLARE @PaidAt DATETIME2(0);
+
+    BEGIN TRY
+
+        BEGIN TRANSACTION;
+
+        -- Lock payroll row
+        SELECT
+            @NetPayable = NetPayable,
+            @CurrentStatus = PaymentStatus
+        FROM dbo.StaffSalaryPayments
+            WITH (UPDLOCK, HOLDLOCK)
+        WHERE PaymentId = @PaymentId;
+
+        IF @CurrentStatus IS NULL
+            THROW 50007, 'Payroll record not found.', 1;
+
+        IF @CurrentStatus = 'Paid'
+            THROW 50008, 'Salary has already been paid.', 1;
+
+        IF @PaymentMethod NOT IN
+        (
+            'Cash',
+            'Bkash',
+            'Bank Transfer'
+        )
+            THROW 50009, 'Invalid payment method.', 1;
+
+        IF @PaymentMethod IN ('Bkash', 'Bank Transfer')
+           AND NULLIF(LTRIM(RTRIM(@TransactionRef)), '') IS NULL
+            THROW 50010, 'Transaction reference is required.', 1;
+
+        SET @PaidAt = SYSDATETIME();
+
+        -- Update payment
+        UPDATE dbo.StaffSalaryPayments
+        SET
+            PaymentStatus = 'Paid',
+            PaymentMethod = @PaymentMethod,
+            TransactionRef = @TransactionRef,
+            PaidAt = @PaidAt,
+            UpdatedAt = @PaidAt
+        WHERE PaymentId = @PaymentId;
+
+        -- Insert audit log
+        INSERT INTO dbo.SalaryPaymentLogs
+        (
+            PaymentId,
+            PaymentMethod,
+            Amount,
+            TransactionRef,
+            PaidByUserId,
+            PaidAt,
+            Remarks
+        )
+        VALUES
+        (
+            @PaymentId,
+            @PaymentMethod,
+            @NetPayable,
+            @TransactionRef,
+            @PaidByUserId,
+            @PaidAt,
+            @Remarks
+        );
+
+        COMMIT TRANSACTION;
+
+        SELECT
+            PaymentId,
+            PaymentStatus,
+            PaymentMethod,
+            TransactionRef,
+            PaidAt,
+            NetPayable
+        FROM dbo.StaffSalaryPayments
+        WHERE PaymentId = @PaymentId;
+
+    END TRY
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+
+    END CATCH
+END;
+GO
