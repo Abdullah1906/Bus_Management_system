@@ -3733,6 +3733,233 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
+
+
+CREATE OR ALTER PROCEDURE dbo.sp_GetStaffById
+(
+    @StaffId INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        StaffId,
+        FullName,
+        PhoneNumber,
+        AlternativeContact,
+        PresentAddress,
+        PermanentAddress,
+        NIDNumber,
+        PassportOrBirthCertificate,
+        RoleType,
+        JoiningDate,
+        DrivingLicenseNumber,
+        LicenseExpiryDate,
+        LicenseType,
+        BaseSalary,
+        BankName,
+        BankAccountNumber,
+        MobileBankingProvider,
+        MobileBankingNumber,
+        Status,
+        CreatedAt,
+        UpdatedAt
+    FROM dbo.Staff
+    WHERE StaffId = @StaffId;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE OR ALTER PROCEDURE dbo.sp_UpdateStaff
+(
+    @StaffId INT,
+
+    @FullName NVARCHAR(150),
+    @PhoneNumber NVARCHAR(20),
+    @AlternativeContact NVARCHAR(20) = NULL,
+    @PresentAddress NVARCHAR(500) = NULL,
+    @PermanentAddress NVARCHAR(500) = NULL,
+
+    @NIDNumber NVARCHAR(30),
+    @PassportOrBirthCertificate NVARCHAR(50) = NULL,
+
+    @RoleType NVARCHAR(30),
+    @JoiningDate DATE,
+
+    @DrivingLicenseNumber NVARCHAR(50) = NULL,
+    @LicenseExpiryDate DATE = NULL,
+    @LicenseType NVARCHAR(20) = NULL,
+
+    @BaseSalary DECIMAL(18,2),
+
+    @BankName NVARCHAR(100) = NULL,
+    @BankAccountNumber NVARCHAR(100) = NULL,
+    @MobileBankingProvider NVARCHAR(50) = NULL,
+    @MobileBankingNumber NVARCHAR(20) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+
+        BEGIN TRANSACTION;
+
+        -- Staff existence
+        IF NOT EXISTS
+        (
+            SELECT 1
+            FROM dbo.Staff WITH (UPDLOCK, HOLDLOCK)
+            WHERE StaffId = @StaffId
+        )
+            THROW 50101, 'Staff not found.', 1;
+
+        -- Duplicate NID excluding current Staff
+        IF EXISTS
+        (
+            SELECT 1
+            FROM dbo.Staff
+            WHERE NIDNumber = @NIDNumber
+              AND StaffId <> @StaffId
+        )
+            THROW 50102, 'NID already exists.', 1;
+
+        -- Duplicate License excluding current Staff
+        IF @DrivingLicenseNumber IS NOT NULL
+           AND EXISTS
+           (
+               SELECT 1
+               FROM dbo.Staff
+               WHERE DrivingLicenseNumber = @DrivingLicenseNumber
+                 AND StaffId <> @StaffId
+           )
+            THROW 50103, 'Driving license already exists.', 1;
+
+        UPDATE dbo.Staff
+        SET
+            FullName = @FullName,
+            PhoneNumber = @PhoneNumber,
+            AlternativeContact = @AlternativeContact,
+            PresentAddress = @PresentAddress,
+            PermanentAddress = @PermanentAddress,
+
+            NIDNumber = @NIDNumber,
+            PassportOrBirthCertificate = @PassportOrBirthCertificate,
+
+            RoleType = @RoleType,
+            JoiningDate = @JoiningDate,
+
+            DrivingLicenseNumber = @DrivingLicenseNumber,
+            LicenseExpiryDate = @LicenseExpiryDate,
+            LicenseType = @LicenseType,
+
+            BaseSalary = @BaseSalary,
+
+            BankName = @BankName,
+            BankAccountNumber = @BankAccountNumber,
+            MobileBankingProvider = @MobileBankingProvider,
+            MobileBankingNumber = @MobileBankingNumber,
+
+            UpdatedAt = SYSDATETIME()
+
+        WHERE StaffId = @StaffId;
+
+        COMMIT TRANSACTION;
+
+        SELECT @StaffId AS StaffId,
+               'Staff updated successfully.' AS Message;
+
+    END TRY
+    BEGIN CATCH
+
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+
+    END CATCH
+END;
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_UpdateStaffStatus
+(
+    @StaffId INT,
+    @Status NVARCHAR(20)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @Status NOT IN ('Active', 'Inactive')
+        THROW 50104, 'Invalid staff status.', 1;
+
+    UPDATE dbo.Staff
+    SET
+        Status = @Status,
+        UpdatedAt = SYSDATETIME()
+    WHERE StaffId = @StaffId;
+
+    IF @@ROWCOUNT = 0
+        THROW 50105, 'Staff not found.', 1;
+
+    SELECT
+        StaffId,
+        Status,
+        'Staff status updated successfully.' AS Message
+    FROM dbo.Staff
+    WHERE StaffId = @StaffId;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_DeactivateStaff
+(
+    @StaffId INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.Staff
+    SET
+        Status = 'Inactive',
+        UpdatedAt = SYSDATETIME()
+    WHERE StaffId = @StaffId;
+
+    IF @@ROWCOUNT = 0
+        THROW 50106, 'Staff not found.', 1;
+
+    SELECT
+        @StaffId AS StaffId,
+        'Staff deactivated successfully.' AS Message;
+END;
+GO
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
 CREATE OR ALTER PROCEDURE dbo.sp_GenerateMonthlyPayroll
 (
     @PayrollMonth DATE
