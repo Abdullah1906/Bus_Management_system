@@ -63,7 +63,21 @@ VALUES
 ('trip.search', 'Search Trip', 'Can search trips', 'Booking'),
 ('booking.create', 'Create Booking', 'Can create booking', 'Booking'),
 ('booking.view', 'View Booking', 'Can view booking', 'Booking'),
-('booking.cancel', 'Cancel Booking', 'Can cancel booking', 'Booking');
+('booking.cancel', 'Cancel Booking', 'Can cancel booking', 'Booking'),
+-- Staff Management
+('staff.view', 'View Staff', 'Can view staff list and details', 'Staff'),
+('staff.create', 'Create Staff', 'Can create new staff member', 'Staff'),
+('staff.edit', 'Edit Staff', 'Can edit staff information', 'Staff'),
+('staff.delete', 'Delete Staff', 'Can soft deactivate staff', 'Staff'),
+('staff.status.update', 'Update Staff Status', 'Can update staff active/inactive status', 'Staff'),
+
+-- Payroll Management
+('payroll.view', 'View Payroll', 'Can view payroll details', 'Payroll'),
+('payroll.generate', 'Generate Payroll', 'Can generate payroll', 'Payroll'),
+('payroll.adjustment', 'Payroll Adjustment', 'Can make payroll adjustments', 'Payroll'),
+('payroll.payment', 'Payroll Payment', 'Can process payroll payments', 'Payroll'),
+('payroll.report.view', 'View Payroll Report', 'Can view payroll reports', 'Payroll'),
+('payroll.report.export', 'Export Payroll Report', 'Can export payroll reports', 'Payroll');
 
 
 -- customer permission

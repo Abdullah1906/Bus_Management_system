@@ -50,6 +50,7 @@ namespace BPS.Infrastructure
             services.AddHostedService<SeatLockCleanupWorker>();
             services.AddScoped<ITokenGenerator, PasswordResetTokenGenerator>();
             //services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+            services.AddScoped<IStaffPayrollRepository,StaffPayrollRepository>();
 
             return services;
         }

@@ -2,6 +2,7 @@
 using BPS.Application.Services;
 using BPS.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
+using FluentValidation;
 
 namespace BPS.Application
 {
@@ -22,6 +23,7 @@ namespace BPS.Application
             services.AddScoped<IPasswordResetService, PasswordResetService>();
 
             services.AddScoped<IEmailService, EmailService>();
+            services.AddValidatorsFromAssemblyContaining<DTOs.StaffPayroll.CreateStaffValidator>();
 
 
             return services;
